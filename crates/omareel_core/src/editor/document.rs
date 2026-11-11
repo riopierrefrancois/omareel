@@ -721,8 +721,8 @@ impl Document {
         let next = set_nested(old.clone(), &parts, 0, value);
         let parsed = Project::from_json(&next);
         // A real change of the aspect or of the camera switch picks the layout automatically
-        // again. An unchanged edit, or an aspect from_json rejected, keeps an explicit Bubble
-        // or Split.
+        // again. An unchanged edit keeps an explicit Bubble or Split; an aspect from_json
+        // rejects falls back to "auto", a real change here, and so resets the layout too.
         let parsed = if parsed.aspect != self.project.aspect || parsed.camera.enabled != self.project.camera.enabled {
             let mut next = next;
             let mut camera = next.value("camera").to_object();
