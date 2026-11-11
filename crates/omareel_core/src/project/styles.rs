@@ -131,6 +131,11 @@ pub struct Camera {
     pub layout: String,
     /// The screen's share of the canvas in Split (0.5 to 0.8).
     pub split_ratio: f64,
+    /// How far the camera picture is scaled up in its Split band, 1 to 3; 1 fills the band.
+    pub split_zoom: f64,
+    /// Where the camera picture sits in its Split band, each axis -1 to 1; x +1 moves it right,
+    /// y +1 up.
+    pub split_pan: PointF,
     pub position: String,
     pub size: f64,
     /// round, square, or rectangle (the webcam's own aspect). `radius` rounds the corners of
@@ -157,6 +162,8 @@ impl Default for Camera {
             enabled: false,
             layout: "auto".into(),
             split_ratio: 0.6,
+            split_zoom: 1.0,
+            split_pan: PointF::new(0.0, 0.0),
             position: "bottom-right".into(),
             size: 0.25,
             shape: "round".into(),
