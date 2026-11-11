@@ -1191,6 +1191,65 @@ private slots:
         QCOMPARE(flip->property("xScale").toDouble(), -1.0);
     }
 
+    void cameraOverlaySplitFraming()
+    {
+        QQmlEngine engine;
+        QQmlComponent component(&engine);
+        component.setData(R"(
+            import QtQuick
+            import Omareel
+            CameraOverlay {
+                settings: ({
+                    enabled: true, position: "bottom-right", size: .25,
+                    shape: "round", radius: 16,
+                    rotation: 0, flipHorizontal: false, scaleDuringZoom: .7,
+                    offset: {x: .035, y: .035},
+                    shadow: {enabled: false, intensity: .28, blur: 23, distance: 20, angle: 45},
+                    border: {enabled: false, width: 6, color: "white", alpha: .7},
+                    fullFrame: "fill"
+                })
+                zoomScale: 1
+                outputWidth: 1080; outputHeight: 768
+                sourceWidth: 1920; sourceHeight: 1080
+                splitMode: true
+                bandRect: Qt.rect(0, 0, 1080, 768)
+                splitZoom: 2
+                splitPanX: 1
+            })", QUrl());
+        QVERIFY2(component.isReady(), qPrintable(component.errorString()));
+        std::unique_ptr<QObject> overlay(component.create());
+        QVERIFY(overlay);
+        auto *source = overlay->findChild<QQuickItem *>(QStringLiteral("cameraFrameSource"));
+        QVERIFY(source);
+
+        const auto near = [](double a, double b) { return qAbs(a - b) < 1e-6; };
+        const double visible = (1080.0 / 768.0) / (1920.0 / 1080.0);
+        QRectF rect = source->property("cropRect").toRectF();
+        // Zoom 2 and pan +1 show the source's left edge.
+        QVERIFY(near(rect.x(), 0.0));
+        QVERIFY(near(rect.width(), visible / 2));
+
+        // The framing blends out as the camera grows into the full frame.
+        overlay->setProperty("fullProgress", 1.0);
+        rect = source->property("cropRect").toRectF();
+        QVERIFY(near(rect.x(), (1 - visible) / 2));
+        QVERIFY(near(rect.width(), visible));
+        QVERIFY(near(rect.y(), 0.0));
+        QVERIFY(near(rect.height(), 1.0));
+
+        // Outside Split the framing has no effect: the bubble keeps its cover crop.
+        overlay->setProperty("fullProgress", 0.0);
+        overlay->setProperty("splitMode", false);
+        rect = source->property("cropRect").toRectF();
+        const double bubbleAspect = overlay->property("width").toDouble()
+            / overlay->property("height").toDouble();
+        const double bubbleVisible = bubbleAspect / (1920.0 / 1080.0);
+        QVERIFY(near(rect.x(), (1 - bubbleVisible) / 2));
+        QVERIFY(near(rect.width(), bubbleVisible));
+        QVERIFY(near(rect.y(), 0.0));
+        QVERIFY(near(rect.height(), 1.0));
+    }
+
     void framingCameraCropMath()
     {
         QQmlEngine engine;

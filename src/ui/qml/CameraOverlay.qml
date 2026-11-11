@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Effects
 import QtMultimedia
 import Omareel
+import "Framing.js" as Framing
 
 Item {
     id: root
@@ -16,6 +17,13 @@ Item {
     // Split draws the camera in its band instead of the corner bubble.
     property bool splitMode: false
     property rect bandRect: Qt.rect(0, 0, 0, 0)
+    // The framing the user chose for the band; it blends out as the camera grows to full frame.
+    property real splitZoom: 1
+    property real splitPanX: 0
+    property real splitPanY: 0
+    readonly property real framingZoom: splitMode ? 1 + (Math.max(1, splitZoom) - 1) * (1 - fullProgress) : 1
+    readonly property real framingPanX: splitMode ? splitPanX * (1 - fullProgress) : 0
+    readonly property real framingPanY: splitMode ? splitPanY * (1 - fullProgress) : 0
     // 0 shows the bubble, 1 the full-frame camera; values between morph one into the other.
     property real fullProgress: 0
     // How visible the bubble is while the camera is not full frame.
@@ -86,6 +94,13 @@ Item {
     readonly property real presence: Math.min(1, fullProgress + bubbleOpacity)
     opacity: presence
     scale: splitMode ? 1 : .85 + .15 * presence
+
+    // The visible part of the camera source, with the band's framing applied while Split is drawn.
+    readonly property rect cameraCrop: {
+        const c = Framing.cameraCrop(width, height, sourceWidth, sourceHeight, settings.rotation,
+                                     settings.flipHorizontal, framingZoom, framingPanX, framingPanY)
+        return Qt.rect(c.x, c.y, c.width, c.height)
+    }
 
     // The part of the camera frame shown in an item of this size: centred, filling it.
     function coverCrop(itemWidth, itemHeight) {
@@ -185,15 +200,18 @@ Item {
                 VideoOutput {
                     id: nativeCameraVideo
                     visible: root.nativePreview
-                    anchors.fill: parent
-                    fillMode: VideoOutput.PreserveAspectCrop
+                    fillMode: VideoOutput.Stretch
+                    width: parent.width / Math.max(0.0001, root.cameraCrop.width)
+                    height: parent.height / Math.max(0.0001, root.cameraCrop.height)
+                    x: -root.cameraCrop.x * width
+                    y: -root.cameraCrop.y * height
                 }
                 FrameSource {
                     id: cameraVideo
                     objectName: "cameraFrameSource"
                     visible: !root.nativePreview
                     anchors.fill: parent
-                    cropRect: root.coverCrop(width, height)
+                    cropRect: root.cameraCrop
                     cornerRadiusRatio: !root.softwareRendering ? 0
                         : root.cornerRadius / Math.max(1, Math.min(width, height))
                 }
