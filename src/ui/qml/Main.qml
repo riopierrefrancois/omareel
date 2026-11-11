@@ -53,18 +53,18 @@ ApplicationWindow {
                  || view === "background-wallpapers-expanded")
             sidePanel.setBackgroundExpanded(true)
         else if (view === "background-gradient-3") {
-            sidePanel.section = 0
+            sidePanel.showSection("Background")
             editor.applyGradientPreset(3)
         } else if (view === "background-gradient-7") {
-            sidePanel.section = 0
+            sidePanel.showSection("Background")
             editor.applyGradientPreset(7)
         }
         else if (view === "rail-tooltip") {
-            sidePanel.section = 5
+            sidePanel.showSection("Camera")
             sidePanel.forcedTooltip = "Camera"
             editor.seek(2)
         } else if (view === "camera-proof") {
-            sidePanel.section = 5
+            sidePanel.showSection("Camera")
             editor.seek(2)
             sidePanel.scrollInspectorToBottom()
         }
@@ -126,7 +126,7 @@ ApplicationWindow {
                 resizing: timelineResize.pressed
                 scaleFactor: window.timelineScale
                 onScaleFactorRequested: value => window.timelineScale = value
-                onCameraSelected: sidePanel.section = 5
+                onCameraSelected: sidePanel.showSection("Camera")
             }
         }
 

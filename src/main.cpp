@@ -119,16 +119,21 @@ static void configureDebugScreenshot(QQmlApplicationEngine &engine, QGuiApplicat
         window->resize(width, height);
     }
 
-    static const QHash<QString, int> panels{
-        {QStringLiteral("background"), 0}, {QStringLiteral("shape"), 1},
-        {QStringLiteral("cursor"), 2}, {QStringLiteral("zoom"), 3},
-        {QStringLiteral("clip"), 4}, {QStringLiteral("camera"), 5},
-        {QStringLiteral("keystrokes"), 6}, {QStringLiteral("audio"), 7}
+    static const QHash<QString, QString> panels{
+        {QStringLiteral("background"), QStringLiteral("Background")},
+        {QStringLiteral("shape"), QStringLiteral("Shape")},
+        {QStringLiteral("cursor"), QStringLiteral("Cursor")},
+        {QStringLiteral("zoom"), QStringLiteral("Zoom")},
+        {QStringLiteral("clip"), QStringLiteral("Clip")},
+        {QStringLiteral("camera"), QStringLiteral("Camera")},
+        {QStringLiteral("keystrokes"), QStringLiteral("Keystrokes")},
+        {QStringLiteral("audio"), QStringLiteral("Audio")}
     };
     const QString panel = qEnvironmentVariable("OMAREEL_SCREENSHOT_PANEL").toLower();
     if (panels.contains(panel)) {
         if (QObject *sidePanel = window->findChild<QObject *>(QStringLiteral("sidePanel")))
-            sidePanel->setProperty("section", panels.value(panel));
+            QMetaObject::invokeMethod(sidePanel, "showSection",
+                Q_ARG(QVariant, QVariant(panels.value(panel))));
         if (QObject *editorObject = engine.rootContext()->contextProperty(QStringLiteral("editor")).value<QObject *>()) {
             if (panel == QLatin1String("zoom")) {
                 const QVariantList zooms = editorObject->property("zooms").toList();
