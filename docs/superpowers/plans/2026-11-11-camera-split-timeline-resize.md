@@ -82,7 +82,26 @@ Same file, `to_json`, the `"camera"` object (around line 518).
   `project` family only (defaults now carry `"layout":"auto"`). That is expected; go to 1.4.
 
 ### 1.4 Re-bless the project goldens (own commit)
+- (Plan fix, 2026-11-11.) `OMAREEL_GOLDEN_BLESS=1` only reaches `assert_golden()`; the project
+  family compares many files through `difference()`, which never writes. So first, in
+  `crates/omareel_core/tests/golden/support.rs`, add right after `difference()`:
+  ```rust
+  /// `difference()` against the golden at `relative`, or, when blessing, writes `actual` there
+  /// and reports nothing.
+  pub fn bless_or_difference(relative: &str, actual: &[u8]) -> Option<String> {
+      if blessing() {
+          std::fs::write(expected_path(relative), actual).expect("the golden file is writable");
+          return None;
+      }
+      difference(relative, &read_expected(relative), actual)
+  }
+  ```
+  Then in `crates/omareel_core/tests/golden/project.rs` only, replace every
+  `difference(X, &read_expected(X), Y)` whose first and second arguments name the same path with
+  `bless_or_difference(X, Y)` (lines ~297, 312, 385, 396). Do not touch other golden files.
+  Without the env var the test must behave exactly as before.
 - Run: `OMAREEL_GOLDEN_BLESS=1 cargo test -p omareel_core --locked --test golden`.
+  A file list mismatch (`Rust wrote [...], the golden has [...]`) is not blessed: if one appears, STOP.
 - Then `git diff --stat tests/golden/expected` and `git diff tests/golden/expected | grep '^[-+]' | grep -v '^[-+][-+]' | grep -v '"layout": *"auto"' | head`.
   Every changed line must only add `"layout":"auto"` (or `"layout": "auto"` in indented files)
   inside `camera`. If any other change shows up (a loaded legacy project gaining a key, a number
