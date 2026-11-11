@@ -134,7 +134,7 @@ ApplicationWindow {
             id: timelineResize
             objectName: "timelineResizeHandle"
             x: 0
-            y: timeline.mapToItem(editorUi, 0, 0).y - height / 2
+            y: timeline.y - height / 2
             width: editorUi.width
             height: 12
             z: 10

@@ -729,6 +729,41 @@ private slots:
         QCOMPARE(timeline->property("rowHeight").toDouble(), 48.0);
     }
 
+    void timelineResizeHandleSitsOnTheTimeline()
+    {
+        QFile::remove(QDir(m_bundle).filePath(QStringLiteral("project.json")));
+        Editor editor(m_bundle);
+        QVERIFY2(editor.isValid(), qPrintable(editor.errorString()));
+        Theme theme;
+        QQmlEngine engine;
+        engine.rootContext()->setContextProperty(QStringLiteral("editor"), &editor);
+        engine.rootContext()->setContextProperty(QStringLiteral("comp"), &editor);
+        engine.rootContext()->setContextProperty(QStringLiteral("theme"), &theme);
+        QQmlComponent component(&engine);
+        component.setData(R"(
+            import Omareel
+            Main { width: 1200; height: 800; visible: true })", QUrl());
+        QVERIFY2(component.isReady(), qPrintable(component.errorString()));
+        std::unique_ptr<QObject> object(component.create());
+        auto *window = qobject_cast<QQuickWindow *>(object.get());
+        QVERIFY(window);
+        QVERIFY(QTest::qWaitForWindowExposed(window));
+        auto *timeline = window->findChild<QQuickItem *>(QStringLiteral("editorTimeline"));
+        auto *handle = window->findChild<QQuickItem *>(QStringLiteral("timelineResizeHandle"));
+        QTRY_VERIFY(timeline);
+        QTRY_VERIFY(handle);
+
+        const auto onTheEdge = [timeline, handle] {
+            const double centre = handle->mapToScene(
+                QPointF(handle->width() / 2, handle->height() / 2)).y();
+            const double top = timeline->mapToScene(QPointF(0, 0)).y();
+            return qAbs(centre - top) <= 2.0;
+        };
+        QTRY_VERIFY(onTheEdge());
+        window->resize(1200, 900);
+        QTRY_VERIFY(onTheEdge());
+    }
+
     void videoThumbnailsFollowSourceTimes()
     {
         const QString thumbnailBundle = m_temporary.filePath(QStringLiteral("thumbnails.omareel"));
