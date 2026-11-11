@@ -147,6 +147,13 @@ Rectangle {
             tooltipShortcut: "Ctrl S"
             onClicked: { root.commitProjectName(); editor.saveNow() }
         }
+        OmIconButton {
+            objectName: "deleteRecordingButton"
+            icon.source: "qrc:/omareel/assets/icons/lucide/trash-2.svg"
+            Accessible.name: "Delete recording"
+            tooltipText: "Delete recording"
+            onClicked: deleteRecordingDialog.open()
+        }
         Rectangle {
             Layout.preferredWidth: 1
             Layout.preferredHeight: 18
@@ -275,6 +282,63 @@ Rectangle {
                     primary: true
                     destructive: true
                     onClicked: { editor.deletePreset(deletePresetName.currentText); deletePresetDialog.close() }
+                }
+            }
+        }
+    }
+
+    PresetDialog {
+        id: deleteRecordingDialog
+        objectName: "deleteRecordingDialog"
+        property bool trashFailed: false
+        onOpened: {
+            trashFailed = false
+            Qt.callLater(function() { cancelDeleteRecording.forceActiveFocus() })
+        }
+        contentItem: ColumnLayout {
+            spacing: 14
+            ColumnLayout {
+                spacing: 4
+                Label { text: "Delete this recording?"; font.pixelSize: theme.type.title; font.weight: Font.DemiBold; color: theme.textStrong }
+                Label {
+                    Layout.fillWidth: true
+                    text: "“" + editor.bundleName + "” goes to the Trash. You can restore it from there."
+                    wrapMode: Text.WordWrap
+                    font.pixelSize: theme.type.small
+                    color: theme.textMuted
+                }
+            }
+            Label {
+                visible: deleteRecordingDialog.trashFailed
+                Layout.fillWidth: true
+                text: "Could not move the recording to the Trash"
+                wrapMode: Text.WordWrap
+                font.pixelSize: theme.type.small
+                color: theme.record
+            }
+            RowLayout {
+                Layout.fillWidth: true
+                Layout.topMargin: 4
+                spacing: 8
+                Item { Layout.fillWidth: true }
+                OmButton {
+                    id: cancelDeleteRecording
+                    text: "Cancel"
+                    bordered: true
+                    focus: true
+                    focusPolicy: Qt.StrongFocus
+                    onClicked: deleteRecordingDialog.close()
+                }
+                OmButton {
+                    text: "Move to Trash"
+                    primary: true
+                    destructive: true
+                    onClicked: {
+                        if (editor.trashRecording())
+                            Qt.quit()
+                        else
+                            deleteRecordingDialog.trashFailed = true
+                    }
                 }
             }
         }

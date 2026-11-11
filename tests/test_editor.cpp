@@ -2323,6 +2323,60 @@ private slots:
         QVERIFY(!QFileInfo::exists(bundle));
     }
 
+    void deleteRecordingButtonConfirmsBeforeTrashing()
+    {
+        const QString bundle = plainBundle(QStringLiteral("delete-button.omareel"));
+        QFile::remove(QDir(bundle).filePath(QStringLiteral("project.json")));
+        Editor editor(bundle);
+        QVERIFY2(editor.isValid(), qPrintable(editor.errorString()));
+
+        Theme theme;
+        QQmlEngine engine;
+        engine.rootContext()->setContextProperty(QStringLiteral("editor"), &editor);
+        engine.rootContext()->setContextProperty(QStringLiteral("comp"), &editor);
+        engine.rootContext()->setContextProperty(QStringLiteral("theme"), &theme);
+        QQmlComponent component(&engine);
+        component.setData(R"(
+            import Omareel
+            Main { width: 1200; height: 800; visible: true })", QUrl());
+        QVERIFY2(component.isReady(), qPrintable(component.errorString()));
+        std::unique_ptr<QObject> object(component.create());
+        auto *window = qobject_cast<QQuickWindow *>(object.get());
+        QVERIFY(window);
+        QVERIFY(QTest::qWaitForWindowExposed(window));
+
+        const auto findItem = [](QQuickItem *parent, const QString &name) {
+            std::function<QQuickItem *(QQuickItem *)> visit = [&](QQuickItem *item) -> QQuickItem * {
+                if (item->objectName() == name) return item;
+                for (QQuickItem *child : item->childItems())
+                    if (QQuickItem *match = visit(child)) return match;
+                return nullptr;
+            };
+            return visit(parent);
+        };
+        auto *button = findItem(window->contentItem(), QStringLiteral("deleteRecordingButton"));
+        QTRY_VERIFY(button);
+        const QPoint point = button->mapToScene(
+            QPointF(button->width() / 2, button->height() / 2)).toPoint();
+        auto *dialog = window->findChild<QObject *>(QStringLiteral("deleteRecordingDialog"));
+        QVERIFY(dialog);
+
+        // Return must not trigger the destructive button (Cancel has focus).
+        QTest::mouseClick(window, Qt::LeftButton, Qt::NoModifier, point);
+        QTRY_VERIFY(dialog->property("visible").toBool());
+        QTest::qWait(50);
+        QTest::keyClick(window, Qt::Key_Return);
+        QTRY_VERIFY(!dialog->property("visible").toBool());
+        QVERIFY(QFileInfo::exists(bundle));
+
+        // Escape closes it without trashing too.
+        QTest::mouseClick(window, Qt::LeftButton, Qt::NoModifier, point);
+        QTRY_VERIFY(dialog->property("visible").toBool());
+        QTest::keyClick(window, Qt::Key_Escape);
+        QTRY_VERIFY(!dialog->property("visible").toBool());
+        QVERIFY(QFileInfo::exists(bundle));
+    }
+
 private:
     bool makeVideo(const QString &path, const QString &source, double seconds)
     {
