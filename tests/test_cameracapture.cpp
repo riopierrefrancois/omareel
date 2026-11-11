@@ -590,6 +590,59 @@ private slots:
         QVERIFY(packCameraFrame(broken).pixels.isEmpty());
     }
 
+    void cameraJpegToleratesATruncatedTail()
+    {
+        // The Brio 500 sometimes sends a frame without its EOI marker; libjpeg fills the tail.
+        QImage source(16, 8, QImage::Format_RGB32);
+        source.fill(Qt::red);
+        QByteArray jpeg;
+        QBuffer buffer(&jpeg);
+        QVERIFY(buffer.open(QIODevice::WriteOnly));
+        QVERIFY(source.save(&buffer, "JPEG", 95));
+        QVERIFY(jpeg.endsWith("\xff\xd9"));
+        jpeg.chop(2);
+        QVideoFrame frame(std::make_unique<JpegTestBuffer>(jpeg));
+        const auto packed = packCameraFrame(frame);
+        QCOMPARE(packed.size, QSize(16, 8));
+        QCOMPARE(packed.pixelFormat, QString("yuvj444p"));
+        QCOMPARE(packed.pixels.size(), 16*8*3);
+    }
+
+    void cameraJpegRejectsGarbage()
+    {
+        QByteArray garbage;
+        for (int index = 0; index < 100; ++index) garbage.append(char(index));
+        QVideoFrame frame(std::make_unique<JpegTestBuffer>(garbage));
+        QVERIFY(packCameraFrame(frame).pixels.isEmpty());
+    }
+
+    void cameraEncoderDropsUndecodableFrames()
+    {
+        if (!haveFfmpeg()) QSKIP("ffmpeg is not installed");
+        QTemporaryDir directory;
+        QVERIFY(directory.isValid());
+        const QString path = directory.filePath(QStringLiteral("camera.mp4"));
+        const QVideoFrame good = bgraFrame(QSize(64, 48), QColor(200, 60, 40));
+        QByteArray garbage;
+        for (int index = 0; index < 100; ++index) garbage.append(char(index));
+        const QVideoFrame bad(std::make_unique<JpegTestBuffer>(garbage));
+        CameraEncoder encoder(path, [] { return false; });
+        encoder.start();
+        QVERIFY(encoder.submit(good, 1000000));
+        QVERIFY(encoder.submit(bad, 1033333));
+        QVERIFY(encoder.submit(good, 1066666));
+        QElapsedTimer timer;
+        timer.start();
+        while (encoder.isRunning() && encoder.encodedFrames() + encoder.droppedFrames() < 3
+               && timer.elapsed() < 20000)
+            QThread::msleep(5);
+        encoder.requestStop();
+        QVERIFY(encoder.wait(20000));
+        QCOMPARE(encoder.error(), QString());
+        QCOMPARE(encoder.encodedFrames(), qint64(2));
+        QVERIFY(encoder.droppedFrames() >= qint64(1));
+    }
+
     void cameraNodesFollowSavedPaths()
     {
         // The node a saved /dev/v4l link points at now, and the node in a Qt camera id, which

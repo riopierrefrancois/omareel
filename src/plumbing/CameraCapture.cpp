@@ -177,8 +177,14 @@ CameraRawFrame Omareel::packCameraFrame(QVideoFrame frame)
             auto *data = reinterpret_cast<unsigned char *>(result.pixels.data());
             unsigned char *planes[] = {data, data + w*h, data + w*h + chromaWidth*chromaHeight};
             int strides[] = {w, chromaWidth, chromaWidth};
-            valid = tjDecompressToYUVPlanes(decoder.handle, jpeg, bytes, planes, w, strides, h,
-                                           TJFLAG_FASTDCT) == 0;
+            if (tjDecompressToYUVPlanes(decoder.handle, jpeg, bytes, planes, w, strides, h,
+                                       TJFLAG_FASTDCT) == 0) {
+                valid = true;
+            } else {
+                // Some cameras (the Brio 500 among them) send a frame without its EOI marker.
+                // libjpeg fills the missing tail and reports that as a warning, not a failure.
+                valid = tjGetErrorCode(decoder.handle) == TJERR_WARNING;
+            }
         }
         frame.unmap();
         if (!valid) return {};
@@ -416,6 +422,8 @@ void CameraEncoder::run()
     QSize size;
     bool launched = false;
     QString failure;
+    int consecutiveBadFrames = 0;
+    bool warnedBadFrame = false;
     const auto remainingMs = [this] {
         return int(std::max<qint64>(0, (m_stopDeadline.load() - monotonicUs()) / 1000));
     };
@@ -446,7 +454,21 @@ void CameraEncoder::run()
         }
         CameraRawFrame packed = packCameraFrame(item.frame);
         item.frame = {};
-        if (packed.pixels.isEmpty()) { failure = QStringLiteral("Could not map camera frame"); break; }
+        if (packed.pixels.isEmpty()) {
+            // One undecodable frame is dropped, not fatal: some cameras send a truncated MJPG
+            // frame now and then. Only a stream that stays broken ends the recording.
+            ++m_dropped;
+            if (++consecutiveBadFrames >= 90) {
+                failure = QStringLiteral("Could not map camera frame");
+                break;
+            }
+            if (!warnedBadFrame) {
+                qWarning().noquote() << "Camera: dropping camera frames that cannot be decoded";
+                warnedBadFrame = true;
+            }
+            continue;
+        }
+        consecutiveBadFrames = 0;
         if (!launched) {
             const QByteArray header = cameraStreamHeader(packed);
             if (header.isEmpty()) {
