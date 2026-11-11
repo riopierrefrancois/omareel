@@ -83,16 +83,25 @@ impl Document {
         let _ = file.read_to_end(&mut bytes);
         let (preset, _) = Project::migrate_defaults(&qjson::object_from_json(&bytes).unwrap_or_default());
         let current_layout = self.project.camera.layout.clone();
+        let current_split_zoom = self.project.camera.split_zoom;
+        let current_split_pan = self.project.camera.split_pan;
         let mut project = self.project.to_json();
         for key in PRESET_KEYS {
             if preset.contains(key) {
                 project.insert(key, preset.value(key).clone());
             }
         }
-        // A preset provides the look, not which layout the user is working in.
+        // A preset provides the look, not which layout the user is working in. The framing
+        // belongs to this webcam shot too, so the current zoom and pan stay.
         if preset.contains("camera") {
             let mut camera = project.value("camera").to_object();
             camera.insert("layout", current_layout.as_str());
+            camera.insert("splitZoom", current_split_zoom);
+            let pan = Object::from_iter([
+                ("x", Value::from(current_split_pan.x)),
+                ("y", Value::from(current_split_pan.y)),
+            ]);
+            camera.insert("splitPan", pan);
             project.insert("camera", camera);
         }
         self.snapshot("");

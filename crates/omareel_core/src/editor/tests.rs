@@ -1631,6 +1631,28 @@ fn presets_keep_the_current_camera_layout() {
 }
 
 #[test]
+fn presets_keep_the_current_camera_framing() {
+    let world = World::new("editor-preset-framing");
+    let mut qt = world.open(&world.camera_bundle("preset-framing.omareel"));
+
+    // Saved while framed; loading after resetting keeps the current default framing.
+    qt.run(|d| d.set_project_value("camera.splitZoom", 2.0.into(), false));
+    qt.run(|d| d.set_project_value("camera.splitPan.x", 0.5.into(), false));
+    qt.run(|d| d.save_preset("framed"));
+    qt.run(|d| d.set_project_value("camera.splitZoom", 1.0.into(), false));
+    qt.run(|d| d.set_project_value("camera.splitPan.x", 0.0.into(), false));
+    qt.run(|d| d.load_preset("framed"));
+    assert_eq!(qt.document.project().camera.split_zoom, 1.0);
+    assert_eq!(qt.document.project().camera.split_pan.x, 0.0);
+
+    // Saved at the default; loading after framing keeps the current zoom.
+    qt.run(|d| d.save_preset("plain"));
+    qt.run(|d| d.set_project_value("camera.splitZoom", 2.0.into(), false));
+    qt.run(|d| d.load_preset("plain"));
+    assert_eq!(qt.document.project().camera.split_zoom, 2.0);
+}
+
+#[test]
 fn loading_an_old_preset_migrates_it() {
     let world = World::new("editor-old-preset");
     let mut qt = world.open(&world.bundle("editor.omareel"));
