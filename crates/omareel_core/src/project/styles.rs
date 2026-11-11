@@ -125,6 +125,12 @@ impl Default for Cursor {
 #[derive(Clone, Debug, PartialEq)]
 pub struct Camera {
     pub enabled: bool,
+    /// "auto" follows the aspect, "bubble" is the corner overlay, "split" shares the canvas
+    /// with the screen. New projects start on auto; a saved project without the key stays
+    /// bubble.
+    pub layout: String,
+    /// The screen's share of the canvas in Split (0.5 to 0.8).
+    pub split_ratio: f64,
     pub position: String,
     pub size: f64,
     /// round, square, or rectangle (the webcam's own aspect). `radius` rounds the corners of
@@ -149,6 +155,8 @@ impl Default for Camera {
     fn default() -> Camera {
         Camera {
             enabled: false,
+            layout: "auto".into(),
+            split_ratio: 0.6,
             position: "bottom-right".into(),
             size: 0.25,
             shape: "round".into(),
