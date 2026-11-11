@@ -10,11 +10,13 @@
 
 use crate::camera_timeline::map_camera_time;
 use crate::clip_timeline::ClipTimeline;
+use crate::compat::cpp;
 use crate::keystroke_track::{KeystrokePill, KeystrokeTrack};
 use crate::layout_timeline::{self, sample_layout};
 use crate::media_probe::VideoInfo;
 use crate::motion_track::{MotionSample, MotionTrack, RippleSample};
 use crate::project::{Clip, Project};
+use crate::split_layout::{self, SplitGeometry};
 use std::collections::HashMap;
 
 /// The `zoom` map: scale and centre of the zoom, and how fast the centre moves.
@@ -26,11 +28,14 @@ pub struct Zoom {
     pub velocity: f64,
 }
 
-/// The `layout` map: how far the webcam has grown to full frame, how visible its bubble is.
+/// The `layout` map: how far the webcam has grown to full frame, how visible its bubble is,
+/// and whether Split is drawn, with where the screen and camera go in output pixels.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Layout {
     pub camera_full: f64,
     pub bubble: f64,
+    pub split_active: bool,
+    pub split: SplitGeometry,
 }
 
 /// The `media` map: the inserted video on screen, if any. `width` and `height` are ints.
@@ -95,7 +100,12 @@ impl CompositionState {
             camera_source_height: 0,
             time: 0.0,
             zoom: Zoom { scale: 1.0, cx: 0.5, cy: 0.5, velocity: 0.0 },
-            layout: Layout { camera_full: 0.0, bubble: 1.0 },
+            layout: Layout {
+                camera_full: 0.0,
+                bubble: 1.0,
+                split_active: false,
+                split: SplitGeometry::default(),
+            },
             media: Media { active: false, ready: true, fit: "fit".into(), width: 16, height: 9 },
             cursor: Cursor {
                 x: 0.5,
@@ -141,7 +151,17 @@ impl CompositionState {
             project.camera.enabled,
             layout_timeline::DEFAULT_TRANSITION,
         );
-        self.layout = Layout { camera_full: layout.camera_full, bubble: layout.bubble };
+        self.layout = Layout { camera_full: layout.camera_full, bubble: layout.bubble, split_active: false, split: SplitGeometry::default() };
+        let output_width = f64::from(self.output_width);
+        let output_height = f64::from(self.output_height);
+        let canvas_aspect = output_width / cpp::max(1.0, output_height);
+        self.layout.split_active =
+            split_layout::active_camera_layout(project, sources.camera_width > 0, canvas_aspect) == "split";
+        self.layout.split = if self.layout.split_active {
+            split_layout::split_geometry(output_width, output_height, project.camera.split_ratio)
+        } else {
+            split_layout::no_split(output_width, output_height)
+        };
         let camera_time = map_camera_time(source_time, sources.camera_offset, sources.camera_duration);
         self.camera_visible = !insert && (!camera_time.before_start || layout.camera_full > 0.0);
         if insert {
