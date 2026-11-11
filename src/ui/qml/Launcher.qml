@@ -217,6 +217,13 @@ ApplicationWindow {
                 Accessible.name: "Settings"
                 onClicked: settingsPopover.visible ? settingsPopover.close() : settingsPopover.open()
             }
+            OmIconButton {
+                id: closeButton
+                icon.source: window.iconRoot + "x.svg"
+                tooltipText: "Close"
+                Accessible.name: "Close"
+                onClicked: window.close()
+            }
         }
 
         Item { Layout.fillHeight: true; Layout.preferredHeight: 18 }
@@ -643,6 +650,7 @@ ApplicationWindow {
     }
     Shortcut { sequence: "Return"; enabled: !window.busy && !settingsPopover.visible; onActivated: window.beginRecording() }
     Shortcut { sequence: "Enter"; enabled: !window.busy && !settingsPopover.visible; onActivated: window.beginRecording() }
+    Shortcut { sequence: "Escape"; enabled: !settingsPopover.visible; onActivated: window.close() }
 
     FolderDialog {
         id: folderDialog
