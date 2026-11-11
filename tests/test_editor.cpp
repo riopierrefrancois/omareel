@@ -2200,7 +2200,7 @@ private slots:
         QTRY_VERIFY(!zoom->isVisible());
     }
 
-    void shapePanelScreenFraming()
+    void layoutPanelScreenFraming()
     {
         const QString bundle = plainBundle(QStringLiteral("shape-framing.omareel"));
         QFile::remove(QDir(bundle).filePath(QStringLiteral("project.json")));
@@ -2218,7 +2218,7 @@ private slots:
             import Omareel
             Window {
                 width: 284; height: 900; visible: true
-                ShapePanel { anchors.fill: parent }
+                LayoutPanel { anchors.fill: parent }
             })", QUrl());
         QVERIFY2(component.isReady(), qPrintable(component.errorString()));
         std::unique_ptr<QObject> object(component.create());

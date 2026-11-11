@@ -68,4 +68,20 @@ ColumnLayout {
             wrapMode: Text.WordWrap
         }
     }
+
+    PanelHeading { text: "Screen"; Layout.topMargin: 2 }
+    PanelSlider { objectName: "screenFramingZoom"; Layout.fillWidth: true; label: "Zoom"; path: "screen.zoom"; from: 1; to: 4; value: editor.project.screen ? editor.project.screen.zoom : 1; stepSize: .01; decimals: 2 }
+    PanelSlider { objectName: "screenFramingHorizontal"; Layout.fillWidth: true; label: "Move ↔"; path: "screen.pan.x"; from: -1; to: 1; value: editor.project.screen && editor.project.screen.pan ? editor.project.screen.pan.x : 0; stepSize: .01; decimals: 2 }
+    PanelSlider { objectName: "screenFramingVertical"; Layout.fillWidth: true; label: "Move ↕"; path: "screen.pan.y"; from: -1; to: 1; value: editor.project.screen && editor.project.screen.pan ? editor.project.screen.pan.y : 0; stepSize: .01; decimals: 2 }
+    EditorButton {
+        objectName: "screenFramingReset"
+        text: "Reset"
+        onClicked: {
+            editor.beginCoalescedEdit("screen.framing")
+            editor.setProjectValue("screen.zoom", 1, true)
+            editor.setProjectValue("screen.pan.x", 0, true)
+            editor.setProjectValue("screen.pan.y", 0, true)
+            editor.endCoalescedEdit()
+        }
+    }
 }
