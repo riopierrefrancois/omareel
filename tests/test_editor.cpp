@@ -1191,6 +1191,105 @@ private slots:
         QCOMPARE(flip->property("xScale").toDouble(), -1.0);
     }
 
+    void framingCameraCropMath()
+    {
+        QQmlEngine engine;
+        QQmlComponent component(&engine);
+        component.setData(R"(
+            import QtQuick
+            import "qrc:/qt/qml/Omareel/Framing.js" as F
+            QtObject {
+                function crop(a, b, c, d, e, f, g, h, i) { return F.cameraCrop(a, b, c, d, e, f, g, h, i) }
+                function ppp(a, b, c, d, e, f) { return F.cameraPanPerPixel(a, b, c, d, e, f) }
+            })", QUrl());
+        QVERIFY2(component.isReady(), qPrintable(component.errorString()));
+        std::unique_ptr<QObject> object(component.create());
+        QVERIFY(object);
+
+        const auto crop = [&object](double itemW, double itemH, double srcW, double srcH,
+                                    int rotation, bool flip, double zoom, double panX, double panY) {
+            QVariant result;
+            const bool ok = QMetaObject::invokeMethod(object.get(), "crop", Q_RETURN_ARG(QVariant, result),
+                Q_ARG(QVariant, itemW), Q_ARG(QVariant, itemH), Q_ARG(QVariant, srcW), Q_ARG(QVariant, srcH),
+                Q_ARG(QVariant, rotation), Q_ARG(QVariant, flip), Q_ARG(QVariant, zoom),
+                Q_ARG(QVariant, panX), Q_ARG(QVariant, panY));
+            return ok ? result.toMap() : QVariantMap();
+        };
+        const auto ppp = [&object](double itemW, double itemH, double srcW, double srcH,
+                                   int rotation, double zoom) {
+            QVariant result;
+            const bool ok = QMetaObject::invokeMethod(object.get(), "ppp", Q_RETURN_ARG(QVariant, result),
+                Q_ARG(QVariant, itemW), Q_ARG(QVariant, itemH), Q_ARG(QVariant, srcW), Q_ARG(QVariant, srcH),
+                Q_ARG(QVariant, rotation), Q_ARG(QVariant, zoom));
+            return ok ? result.toMap() : QVariantMap();
+        };
+        const auto near = [](double a, double b) { return qAbs(a - b) < 1e-9; };
+        const auto matches = [&near](const QVariantMap &rect, double x, double y, double w, double h) {
+            return near(rect.value("x").toDouble(), x) && near(rect.value("y").toDouble(), y)
+                && near(rect.value("width").toDouble(), w) && near(rect.value("height").toDouble(), h);
+        };
+
+        // A 1080x768 band showing a 1920x1080 camera crops the source horizontally.
+        const double visible = (1080.0 / 768.0) / (1920.0 / 1080.0);
+        QVERIFY(matches(crop(1080, 768, 1920, 1080, 0, false, 1, 0, 0),
+                        (1 - visible) / 2, 0, visible, 1));
+
+        // At zoom 1 and no pan this is exactly the old cover crop, for every rotation and mirror.
+        const auto oldCover = [](double itemW, double itemH, double srcW, double srcH) {
+            const double sourceAspect = srcW / qMax(1.0, srcH);
+            const double itemAspect = itemW / itemH;
+            if (sourceAspect > itemAspect) {
+                const double v = itemAspect / sourceAspect;
+                return QRectF((1 - v) / 2, 0, v, 1);
+            }
+            const double v = sourceAspect / itemAspect;
+            return QRectF(0, (1 - v) / 2, 1, v);
+        };
+        for (int rotation : {0, 90, 180, 270}) {
+            for (bool flip : {false, true}) {
+                const bool quarter = rotation == 90 || rotation == 270;
+                const QRectF old = oldCover(quarter ? 768.0 : 1080.0, quarter ? 1080.0 : 768.0,
+                                            1920.0, 1080.0);
+                const QVariantMap rect = crop(1080, 768, 1920, 1080, rotation, flip, 1, 0, 0);
+                QVERIFY2(matches(rect, old.x(), old.y(), old.width(), old.height()),
+                         qPrintable(QStringLiteral("rotation %1 flip %2").arg(rotation).arg(flip)));
+            }
+        }
+
+        // Zoom 2 halves the window, and the pan reaches each edge of the source.
+        const QVariantMap zoomed = crop(1080, 768, 1920, 1080, 0, false, 2, 0, 0);
+        QVERIFY(near(zoomed.value("width").toDouble(), visible / 2));
+        const QVariantMap right = crop(1080, 768, 1920, 1080, 0, false, 2, 1, 0);
+        QVERIFY(near(right.value("x").toDouble(), 0));
+        const QVariantMap left = crop(1080, 768, 1920, 1080, 0, false, 2, -1, 0);
+        QVERIFY(near(left.value("x").toDouble() + left.value("width").toDouble(), 1));
+        const QVariantMap up = crop(1080, 768, 1920, 1080, 0, false, 2, 0, 1);
+        QVERIFY(near(up.value("y").toDouble() + up.value("height").toDouble(), 1));
+        QVERIFY(near(crop(1080, 768, 1920, 1080, 0, false, 2, 0, -1).value("y").toDouble(), 0));
+
+        // A quarter turn maps the picture moving right to the source's lower part.
+        QVERIFY(matches(crop(1080, 768, 1920, 1080, 90, false, 2, 1, 0), 0.4, 0.5, 0.2, 0.5));
+
+        // Mirroring flips the source window to the other side.
+        const QVariantMap mirrored = crop(1080, 768, 1920, 1080, 0, true, 2, 1, 0);
+        QVERIFY(near(mirrored.value("x").toDouble() + mirrored.value("width").toDouble(), 1));
+
+        // Inputs are clamped; rotation 45 behaves as 0, zoom 9 as 3 and pan 5 as 1.
+        const QVariantMap clamped = crop(1080, 768, 1920, 1080, 0, false, 3, 1, 1);
+        QVERIFY(matches(crop(1080, 768, 1920, 1080, 45, false, 9, 5, 1),
+                        clamped.value("x").toDouble(), clamped.value("y").toDouble(),
+                        clamped.value("width").toDouble(), clamped.value("height").toDouble()));
+        QVERIFY(matches(crop(0, 0, 1920, 1080, 0, false, 1, 0, 0), 0, 0, 1, 1));
+
+        // Pan per pixel is zero on an axis the cover crop leaves with no room.
+        const QVariantMap one = ppp(1080, 768, 1920, 1080, 0, 1);
+        QVERIFY(one.value("x").toDouble() > 0);
+        QVERIFY(near(one.value("y").toDouble(), 0));
+        const QVariantMap two = ppp(1080, 768, 1920, 1080, 0, 2);
+        QVERIFY(two.value("x").toDouble() > 0);
+        QVERIFY(two.value("y").toDouble() > 0);
+    }
+
     void newProjectUsesCapturedCameraOrientation()
     {
         const QString bundle = m_temporary.filePath(QStringLiteral("camera-default.omareel"));
