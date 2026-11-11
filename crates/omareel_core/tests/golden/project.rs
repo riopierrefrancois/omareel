@@ -294,7 +294,7 @@ fn load_fields_migrate_and_rewritten_files() {
         [("load.txt", outputs.summary), ("fields.txt", outputs.fields), ("migrate.txt", outputs.migrate)]
     {
         let relative = format!("project/{name}");
-        reports.extend(difference(&relative, &read_expected(&relative), text.into_string().as_bytes()));
+        reports.extend(bless_or_difference(&relative, text.into_string().as_bytes()));
     }
     for (directory, files) in [
         ("load", outputs.load),
@@ -309,7 +309,7 @@ fn load_fields_migrate_and_rewritten_files() {
         for (name, bytes) in files {
             let relative = format!("project/{directory}/{name}");
             if expected_path(&relative).exists() {
-                reports.extend(difference(&relative, &read_expected(&relative), &bytes));
+                reports.extend(bless_or_difference(&relative, &bytes));
             }
         }
     }
@@ -382,7 +382,7 @@ fn defaults_and_defaults_fields() {
     let mut fields = Text::new();
     for (label, project) in defaults_cases() {
         let relative = format!("project/defaults/{label}.json");
-        reports.extend(difference(&relative, &read_expected(&relative), indented(&project).as_bytes()));
+        reports.extend(bless_or_difference(&relative, indented(&project).as_bytes()));
         fields.section(label);
         dump_project(&mut fields, &project);
     }
@@ -393,11 +393,7 @@ fn defaults_and_defaults_fields() {
     if sorted != expected {
         reports.push(format!("project/defaults: Rust wrote {sorted:?}, the golden has {expected:?}"));
     }
-    reports.extend(difference(
-        "project/defaults-fields.txt",
-        &read_expected("project/defaults-fields.txt"),
-        fields.into_string().as_bytes(),
-    ));
+    reports.extend(bless_or_difference("project/defaults-fields.txt", fields.into_string().as_bytes()));
     assert_no_differences(reports);
 }
 

@@ -48,6 +48,10 @@ regeneration.
   `project/` lost the `showOnlyShortcuts` key and field rows everywhere;
   `keystroketrack/sample.txt` and the keystroke pills of `composition/editor.txt` and
   `composition/exporter.txt` no longer show typing.
+- Camera layout: `camera.layout` ("auto", "bubble", "split") and `camera.splitRatio` (0.5–0.8,
+  default 0.6) were added for the Split layout. They are written only when not "bubble" and not
+  0.6, so loaded projects are unchanged; new and default projects now carry `"layout": "auto"`
+  in `project/defaults/`, `project/tojson/` and the `setJson` row of `project/helpers.txt`.
 
 The oracle's working directory is `$HOME` for every family, and its scratch files live under
 `$HOME/oracle-scratch/<family>/`. For the recording side it links what the app links: Qt

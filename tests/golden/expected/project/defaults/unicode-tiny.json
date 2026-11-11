@@ -35,6 +35,7 @@
         "enabled": false,
         "flipHorizontal": false,
         "fullFrame": "fill",
+        "layout": "auto",
         "offset": {
             "x": 0.035,
             "y": 0.035

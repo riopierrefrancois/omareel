@@ -552,6 +552,16 @@ pub fn difference(name: &str, expected: &[u8], actual: &[u8]) -> Option<String> 
     Some(report)
 }
 
+/// `difference()` against the golden at `relative`, or, when blessing, writes `actual` there
+/// and reports nothing.
+pub fn bless_or_difference(relative: &str, actual: &[u8]) -> Option<String> {
+    if blessing() {
+        std::fs::write(expected_path(relative), actual).expect("the golden file is writable");
+        return None;
+    }
+    difference(relative, &read_expected(relative), actual)
+}
+
 #[track_caller]
 pub fn assert_same(name: &str, expected: &[u8], actual: &[u8]) {
     if let Some(report) = difference(name, expected, actual) {
