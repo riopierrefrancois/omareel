@@ -12,6 +12,7 @@ Rectangle {
     property string forcedTooltip: ""
     readonly property var sections: [
         {name:"Background", meta:"Canvas behind the video", icon:"palette.svg"},
+        {name:"Layout", meta:"Where the screen and camera go", icon:"layers.svg"},
         {name:"Shape", meta:"Framing, frame, shadow, and border", icon:"square.svg"},
         {name:"Cursor", meta:"Pointer, clicks, and motion", icon:"mouse-pointer-2.svg"},
         {name:"Zoom", meta:"Focus and camera motion", icon:"zoom-in.svg"},
@@ -214,6 +215,7 @@ Rectangle {
                             sourceComponent: {
                                 switch (root.sections[root.displayedSection].name) {
                                 case "Background": return backgroundPanel
+                                case "Layout": return layoutPanel
                                 case "Shape": return shapePanel
                                 case "Cursor": return cursorPanel
                                 case "Zoom": return zoomPanel
@@ -231,6 +233,7 @@ Rectangle {
     }
 
     Component { id: backgroundPanel; BackgroundPanel { } }
+    Component { id: layoutPanel; LayoutPanel { } }
     Component { id: shapePanel; ShapePanel { } }
     Component { id: cursorPanel; CursorPanel { } }
     Component { id: zoomPanel; ZoomPanel { } }

@@ -2079,7 +2079,7 @@ private slots:
         QTRY_COMPARE_WITH_TIMEOUT(editor.playerPositionMsForTests(), qint64(500), 2000);
     }
 
-    void cameraPanelLayoutFollowsTheAspect()
+    void layoutPanelLayoutFollowsTheAspect()
     {
         Editor editor(cameraBundle(QStringLiteral("panel-layout.omareel")));
         QVERIFY2(editor.isValid(), qPrintable(editor.errorString()));
@@ -2098,7 +2098,7 @@ private slots:
             import Omareel
             Window {
                 width: 284; height: 900; visible: true
-                CameraPanel { anchors.fill: parent }
+                LayoutPanel { anchors.fill: parent }
             })", QUrl());
         QVERIFY2(component.isReady(), qPrintable(component.errorString()));
         std::unique_ptr<QObject> object(component.create());
@@ -2118,10 +2118,20 @@ private slots:
         auto *group = findItem(window->contentItem(), QStringLiteral("cameraLayoutGroup"));
         QTRY_VERIFY(group);
         QCOMPARE(group->property("value").toString(), QStringLiteral("split"));
+        auto *ratio = findItem(window->contentItem(), QStringLiteral("cameraSplitRatioGroup"));
+        QTRY_VERIFY(ratio);
+        QVERIFY(qAbs(ratio->property("value").toDouble() - 0.6) < 1e-9);
+        auto *orientation = findItem(window->contentItem(), QStringLiteral("layoutSplitOrientation"));
+        QTRY_VERIFY(orientation);
+        QCOMPARE(orientation->property("text").toString(), QStringLiteral("Screen on top, camera below"));
 
         QVERIFY(QMetaObject::invokeMethod(group, "changed",
             Q_ARG(QVariant, QVariant(QStringLiteral("bubble")))));
         QTRY_COMPARE(editor.activeCameraLayout(), QStringLiteral("bubble"));
+
+        editor.setProjectValue(QStringLiteral("aspect"), QStringLiteral("16:9"));
+        editor.setProjectValue(QStringLiteral("camera.layout"), QStringLiteral("split"));
+        QTRY_COMPARE(orientation->property("text").toString(), QStringLiteral("Screen left, camera right"));
     }
 
     void cameraPanelFramingControls()

@@ -123,6 +123,7 @@ set_source_files_properties(
     src/ui/qml/AudioPanel.qml
     src/ui/qml/ClipPanel.qml
     src/ui/qml/CameraPanel.qml
+    src/ui/qml/LayoutPanel.qml
     src/ui/qml/KeystrokesPanel.qml
     src/ui/qml/ExportDialog.qml
     src/ui/qml/InsertClipDialog.qml
@@ -142,7 +143,7 @@ set_source_files_properties(src/ui/qml/Framing.js PROPERTIES QT_RESOURCE_ALIAS "
 set_source_files_properties(src/ui/qml/Aspects.js PROPERTIES QT_RESOURCE_ALIAS "Aspects.js")
 set_source_files_properties(src/ui/qml/BlurredBackdrop.qml PROPERTIES QT_RESOURCE_ALIAS "BlurredBackdrop.qml")
 set_source_files_properties(src/ui/qml/MediaLayer.qml PROPERTIES QT_RESOURCE_ALIAS "MediaLayer.qml")
-foreach(qml_name IN ITEMS Main TopBar PreviewPane BottomBar SidePanel PanelSlider PanelLabel PanelHeading PanelValue IconToolButton EditorButton EditorSlider EditorSwitch EditorComboBox BackgroundPanel ShapePanel CursorPanel ZoomPanel AudioPanel ClipPanel CameraPanel KeystrokesPanel ExportDialog InsertClipDialog Timeline ClipTrack ZoomTrack Launcher RecordingBar)
+foreach(qml_name IN ITEMS Main TopBar PreviewPane BottomBar SidePanel PanelSlider PanelLabel PanelHeading PanelValue IconToolButton EditorButton EditorSlider EditorSwitch EditorComboBox BackgroundPanel ShapePanel CursorPanel ZoomPanel AudioPanel ClipPanel CameraPanel LayoutPanel KeystrokesPanel ExportDialog InsertClipDialog Timeline ClipTrack ZoomTrack Launcher RecordingBar)
     set_source_files_properties(src/ui/qml/${qml_name}.qml PROPERTIES QT_RESOURCE_ALIAS "${qml_name}.qml")
 endforeach()
 qt_add_qml_module(omareel_render
@@ -185,6 +186,7 @@ qt_add_qml_module(omareel_render
         src/ui/qml/AudioPanel.qml
         src/ui/qml/ClipPanel.qml
         src/ui/qml/CameraPanel.qml
+        src/ui/qml/LayoutPanel.qml
         src/ui/qml/KeystrokesPanel.qml
         src/ui/qml/ExportDialog.qml
         src/ui/qml/InsertClipDialog.qml
