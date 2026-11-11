@@ -192,9 +192,22 @@ turning the camera off and on picks the layout automatically again. Bubble-only 
 (position, size, shape, corner radius, shrink while zoomed, shadow, and border) are hidden in
 Split; Full screen, Rotation, and Mirror stay available.
 
+**Framing** in the same panel zooms the camera picture in its band from 1× (the cover crop) to
+3× and moves it horizontally and vertically; **Reset framing** returns to the cover crop. Drag
+the band to pan it, or hold Ctrl and scroll over it to zoom. The framing applies only in Split
+and eases out as a camera clip grows to the full frame.
+
 Drag the timeline's top edge up or down to resize it; the Clip, Zoom, and Camera rows grow
 together and keep a 48 px minimum. Double-click the edge to reset the timeline to its minimum
 height.
+
+## Screen framing
+
+The Shape panel's **Screen framing** group zooms the recording frame from 1× (the fitted frame,
+padding and border included) to 4× and moves it horizontally and vertically; **Reset framing**
+returns to the fitted, centred frame. It applies in Bubble and Split, and with no background.
+Drag the screen picture to pan it, or hold Ctrl and scroll over it to zoom. The cursor, click
+effects, zooms, and the zoom-target picker follow the framed screen.
 
 ## Inserted videos
 
