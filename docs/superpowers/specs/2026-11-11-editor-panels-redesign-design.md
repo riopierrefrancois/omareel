@@ -1,4 +1,4 @@
-# Editor side panels: Layout, Screen, Webcam, Clip "Show"
+# Editor side panels: Layout, Screen, Camera, Clip "Show"
 
 Date: 2026-11-11. Approved by PF the same day. Branch `pf/split-and-timeline`.
 
@@ -18,7 +18,7 @@ PF finds the editor's settings scattered and confusing:
 
 ## Design
 
-Rule: **Layout** says where things go; **Screen** and **Webcam** say what they look like; **Clip**
+Rule: **Layout** says where things go; **Screen** and **Camera** say what they look like; **Clip**
 says what one clip shows. Nothing about project data, rendering or export changes. Existing
 projects open and render exactly as before; the project keys (`camera.layout`,
 `camera.splitRatio`, `camera.splitZoom`, `camera.splitPan`, `screen.zoom`, `screen.pan`,
@@ -29,19 +29,19 @@ projects open and render exactly as before; the project keys (`camera.layout`,
 | # | Name | Meta | Icon | Panel file |
 |---|---|---|---|---|
 | 0 | Background | Canvas behind the video | palette.svg | BackgroundPanel.qml |
-| 1 | **Layout** (new) | Where the screen and webcam go | layers.svg (already in the resources) | **LayoutPanel.qml** (new) |
+| 1 | **Layout** (new) | Where the screen and camera go | layers.svg (already in the resources) | **LayoutPanel.qml** (new) |
 | 2 | **Screen** (was Shape) | Padding, corners, shadow and border | square.svg | ShapePanel.qml (file name kept) |
 | 3 | Cursor | Pointer, clicks, and motion | mouse-pointer-2.svg | CursorPanel.qml |
 | 4 | Zoom | Focus and camera motion | zoom-in.svg | ZoomPanel.qml |
 | 5 | Clip | Trim, speed and what it shows | film.svg | ClipPanel.qml |
-| 6 | **Webcam** (was Camera) | Look of the webcam | camera.svg | CameraPanel.qml (file name kept) |
+| 6 | **Camera** (was Camera) | Look of the camera | camera.svg | CameraPanel.qml (file name kept) |
 | 7 | Keystrokes | Shortcut overlay | keyboard.svg | KeystrokesPanel.qml |
 | 8 | Audio | Tracks and volume | volume-2.svg | AudioPanel.qml |
 
 File names stay as they are (ShapePanel.qml, CameraPanel.qml) to keep the diff and the tests
 small; only what the user sees changes.
 
-Sections are addressed **by name** everywhere (`sidePanel.showSection("Webcam")`), never by
+Sections are addressed **by name** everywhere (`sidePanel.showSection("Camera")`), never by
 index, so adding Layout cannot shift anything again.
 
 ### Layout panel (new), top to bottom
@@ -50,22 +50,22 @@ index, so adding Layout cannot shift anything again.
    Portrait 4:5, Classic 4:3, Tall 3:4), bound to `editor.project.aspect`, writing
    `editor.setProjectValue("aspect", value)`. The list moves to a shared `Aspects.js` that the
    bottom bar uses too, so the two can't drift. The bottom bar's control stays.
-2. **Webcam layout** (only when `editor.hasCamera`):
-   - when the webcam is shown (`editor.project.camera.enabled`): a full-width segmented
+2. **Camera layout** (only when `editor.hasCamera`):
+   - when the camera is shown (`editor.project.camera.enabled`): a full-width segmented
      `[Split | Bubble]` (objectName `cameraLayoutGroup`, unchanged behaviour: value
      `editor.activeCameraLayout`, writes `camera.layout`);
-   - when it is hidden: one muted line "Turn on Show webcam in Webcam to place it."
-   - When the recording has no webcam at all, this whole group is absent.
+   - when it is hidden: one muted line "Turn on Show camera in Camera to place it."
+   - When the recording has no camera at all, this whole group is absent.
 3. **Split** (Split only): a `PanelLabel` "Split" on its own line, then a full-width segmented
    `[50/50][60/40][70/30]` (objectName `cameraSplitRatioGroup`, unchanged values and setter).
    Below it one muted line from the canvas shape:
-   `editor.outputWidth > editor.outputHeight ? "Screen left, webcam right" : "Screen on top, webcam below"`
+   `editor.outputWidth > editor.outputHeight ? "Screen left, camera right" : "Screen on top, camera below"`
    (same rule as `split_geometry`: side by side only when wider than tall). The old paragraph is
    removed.
 4. **Screen** heading: Zoom (1–4), Move ↔, Move ↕ sliders and "Reset" (moved from ShapePanel;
    objectNames `screenFramingZoom`, `screenFramingHorizontal`, `screenFramingVertical`,
    `screenFramingReset` kept; slider labels become "Zoom", "Move ↔", "Move ↕").
-5. **Webcam** heading (only when the webcam is shown):
+5. **Camera** heading (only when the camera is shown):
    - Split: Zoom (1–3), Move ↔, Move ↕, "Reset" (moved from CameraPanel; objectNames
      `cameraFramingZoom`, `cameraFramingHorizontal`, `cameraFramingVertical`,
      `cameraFramingReset` kept).
@@ -77,41 +77,41 @@ index, so adding Layout cannot shift anything again.
 Only the frame look: the "background None" note, Padding, Roundness, Shadow (+ its sliders),
 Border (+ its sliders and colour). The Screen framing group is gone (now in Layout).
 
-### Webcam panel (was Camera)
+### Camera panel (was Camera)
 
-Only the webcam's look: the no-webcam empty state, the camera status line, **Show webcam**
-switch (was "Show camera"; description "Show the webcam in the video"), then:
+Only the camera's look: the no-camera empty state, the camera status line, **Show camera**
+switch (was "Show camera"; description "Show the camera in the video"), then:
 
 - **Bubble style** heading: Shape, Corner radius, Shrink while zoomed, Shadow (+ sliders),
   Border (+ sliders, colour). These style only the bubble. In Split they stay visible but
   disabled (opacity .42, like other disabled groups), with one muted line above them:
   "Bubble style applies when Layout is Bubble."
 - **Full screen** heading: Fill frame / Square + blur, with the hint reworded to
-  "Clips set to Show: Webcam fill the frame with the webcam. Set it per clip in Clip."
+  "Clips set to Show: Camera fill the frame with the camera. Set it per clip in Clip."
 - Rotation and Mirror, unchanged.
 
 Removed from this panel: Layout, Split ratio, the long hint, Framing, Position pad, Size.
 
 ### Clip panel and timeline: "Show"
 
-- ClipPanel: the label "Layout" becomes **Show**; options "Both" (default), "Webcam" (camera),
+- ClipPanel: the label "Layout" becomes **Show**; options "Both" (default), "Camera" (camera),
   "Screen" (screen). objectName `clipLayoutGroup` and values unchanged.
-- Hints: Webcam → "The webcam fills the frame. Choose Fill or Square in Webcam."; Screen → "The
-  screen alone, without the webcam."; Both with the webcam on → "The screen and the webcam, as
-  set in Layout."; Both with the webcam off → "The screen alone: Show webcam is off in Webcam."
-- ClipTrack: the clip label shows "Webcam" instead of "Camera" for camera clips (~line 258); the
-  label menu's options (~line 355, no header) read "Both", "Webcam", "Screen".
-- Timeline: the camera track's row label "Camera" becomes "Webcam" (Timeline.qml ~194, the
-  `name` of the third row) and the camera block's label (~524) becomes "Webcam".
+- Hints: Camera → "The camera fills the frame. Choose Fill or Square in Camera."; Screen → "The
+  screen alone, without the camera."; Both with the camera on → "The screen and the camera, as
+  set in Layout."; Both with the camera off → "The screen alone: Show camera is off in Camera."
+- ClipTrack: the clip label shows "Camera" instead of "Camera" for camera clips (~line 258); the
+  label menu's options (~line 355, no header) read "Both", "Camera", "Screen".
+- Timeline: the camera track's row label "Camera" becomes "Camera" (Timeline.qml ~194, the
+  `name` of the third row) and the camera block's label (~524) becomes "Camera".
 - Launcher, recording bar and anything outside the editor: untouched.
 
 ### Debug screenshots
 
 `OMAREEL_SCREENSHOT_PANEL` (src/main.cpp ~122) maps names to section indexes today. It becomes a
 name lookup through `sidePanel.showSection(name)`, accepting `background, layout, screen, cursor,
-zoom, clip, webcam, keystrokes, audio`, with `shape` → Screen and `camera` → Webcam kept as
+zoom, clip, camera, keystrokes, audio`, with `shape` → Screen and `camera` → Camera kept as
 aliases (tools/parity/compare-binaries.sh and older notes use them). `prepareScreenshot` views
-`rail-tooltip` and `camera-proof` use names too (`forcedTooltip` becomes "Webcam").
+`rail-tooltip` and `camera-proof` use names too (`forcedTooltip` becomes "Camera").
 
 ## Out of scope
 

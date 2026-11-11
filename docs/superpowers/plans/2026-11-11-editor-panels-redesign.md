@@ -1,4 +1,7 @@
-# Plan: editor side panels — Layout, Screen, Webcam, Clip "Show"
+# Plan: editor side panels — Layout, Screen, Camera, Clip "Show"
+
+> PF (2026-11-11): never say "webcam" in the UI; it is often a real camera. Every user-facing
+> string says "Camera"/"camera". The Camera section keeps its name (only Shape is renamed, to Screen).
 
 Spec: `docs/superpowers/specs/2026-11-11-editor-panels-redesign-design.md`. Read it first; the
 tables there are the target.
@@ -85,38 +88,38 @@ File `src/ui/qml/SidePanel.qml`.
 - `BottomBar.qml`: `import "Aspects.js" as Aspects`; `readonly property var aspects: Aspects.list`.
 - Verify: `V-BUILD` (behaviour unchanged; the aspect menu tests, if any, still pass).
 
-### 2.2 `LayoutPanel.qml`: canvas, webcam layout, split
+### 2.2 `LayoutPanel.qml`: canvas, camera layout, split
 - New `src/ui/qml/LayoutPanel.qml`, registered next to `CameraPanel.qml` in both CMake lists
   (it appears twice in `CMakeLists.txt`, ~124 and ~184; add `LayoutPanel.qml` after it in both).
-- Root: `ColumnLayout { id: root; spacing: theme.space.panelGap; readonly property var camera: editor.project.camera; readonly property bool webcamShown: editor.hasCamera && root.camera.enabled }`.
+- Root: `ColumnLayout { id: root; spacing: theme.space.panelGap; readonly property var camera: editor.project.camera; readonly property bool cameraShown: editor.hasCamera && root.camera.enabled }`.
 - Contents in this task (spec "Layout panel" items 1–3):
   - `PanelHeading { text: "Canvas" }`, then an `OmDropdown { objectName: "layoutAspectMenu"; Layout.fillWidth: true; textRole: "text"; model: Aspects.list; currentIndex: <index of editor.project.aspect, -1 → 0>; onActivated: editor.setProjectValue("aspect", model[currentIndex].value) }`
     (`import "Aspects.js" as Aspects`; follow how BottomBar's `aspectBox` sets `currentIndex`).
   - `ColumnLayout { visible: editor.hasCamera; … }` holding:
-    - `PanelHeading { text: "Webcam layout"; Layout.topMargin: 2 }`.
+    - `PanelHeading { text: "Camera layout"; Layout.topMargin: 2 }`.
     - The `OmButtonGroup` **moved** from CameraPanel (objectName `cameraLayoutGroup`, options
       Split/Bubble, `value: editor.activeCameraLayout`, `onChanged` writes `camera.layout`),
-      now `Layout.fillWidth: true` and `visible: root.webcamShown`.
-    - `Label { visible: !root.webcamShown; text: "Turn on Show webcam in Webcam to place it."; muted small style as CameraPanel's labels }`.
-    - Split only (`visible: root.webcamShown && editor.activeCameraLayout === "split"`):
+      now `Layout.fillWidth: true` and `visible: root.cameraShown`.
+    - `Label { visible: !root.cameraShown; text: "Turn on Show camera in Camera to place it."; muted small style as CameraPanel's labels }`.
+    - Split only (`visible: root.cameraShown && editor.activeCameraLayout === "split"`):
       `PanelLabel { text: "Split" }`, the ratio `OmButtonGroup` **moved** from CameraPanel
       (objectName `cameraSplitRatioGroup`, same options/value/onChanged) with `Layout.fillWidth: true`,
-      and `Label { objectName: "layoutSplitOrientation"; text: editor.outputWidth > editor.outputHeight ? "Screen left, webcam right" : "Screen on top, webcam below" }` in the muted small style.
+      and `Label { objectName: "layoutSplitOrientation"; text: editor.outputWidth > editor.outputHeight ? "Screen left, camera right" : "Screen on top, camera below" }` in the muted small style.
   - In `CameraPanel.qml` delete the moved Layout row, the ratio row and the long "Tall canvas…"
     Label (keep everything else for now).
-- `SidePanel.qml`: insert `{name:"Layout", meta:"Where the screen and webcam go", icon:"layers.svg"}`
+- `SidePanel.qml`: insert `{name:"Layout", meta:"Where the screen and camera go", icon:"layers.svg"}`
   right after Background; add `Component { id: layoutPanel; LayoutPanel { } }` and the "Layout"
   case in the name switch.
 - Tests: change `cameraPanelLayoutFollowsTheAspect` to instantiate `LayoutPanel` instead of
   `CameraPanel` (same assertions; rename the slot to `layoutPanelLayoutFollowsTheAspect`), and
   add to it: `cameraSplitRatioGroup` exists and its `value` is 0.6; `layoutSplitOrientation`'s
-  `text` is "Screen on top, webcam below" at 9:16 and "Screen left, webcam right" after
+  `text` is "Screen on top, camera below" at 9:16 and "Screen left, camera right" after
   `editor.setProjectValue("aspect", "16:9")` + `camera.layout` "split". Run it first against the
   new file before moving the controls (it fails), then move them.
 - Verify: `V-BUILD`.
 
 ### 2.3 Screen framing moves to Layout
-- `LayoutPanel.qml`, after the webcam layout group: `PanelHeading { text: "Screen"; Layout.topMargin: 2 }`
+- `LayoutPanel.qml`, after the camera layout group: `PanelHeading { text: "Screen"; Layout.topMargin: 2 }`
   and the four controls **moved** from `ShapePanel.qml` (the three `PanelSlider`s and the Reset
   `EditorButton`, objectNames unchanged). Slider labels: "Zoom", "Move ↔", "Move ↕"; button text "Reset".
 - `ShapePanel.qml`: delete the "Screen framing" heading, the four controls and the
@@ -125,9 +128,9 @@ File `src/ui/qml/SidePanel.qml`.
   `ShapePanel`; rename it `layoutPanelScreenFraming`. Assertions unchanged.
 - Verify: `V-BUILD`.
 
-### 2.4 Webcam framing and bubble placement move to Layout
-- `LayoutPanel.qml`, after Screen: a `ColumnLayout { visible: root.webcamShown; … }` with
-  `PanelHeading { text: "Webcam"; Layout.topMargin: 2 }` and:
+### 2.4 Camera framing and bubble placement move to Layout
+- `LayoutPanel.qml`, after Screen: a `ColumnLayout { visible: root.cameraShown; … }` with
+  `PanelHeading { text: "Camera"; Layout.topMargin: 2 }` and:
   - Split (`visible: editor.activeCameraLayout === "split"`): the framing sliders + Reset
     **moved** from CameraPanel (objectNames `cameraFramingZoom`, `cameraFramingHorizontal`,
     `cameraFramingVertical`, `cameraFramingReset` unchanged; labels "Zoom", "Move ↔", "Move ↕";
@@ -140,43 +143,43 @@ File `src/ui/qml/SidePanel.qml`.
 - `CameraPanel.qml`: delete the moved Framing column, the Position heading, the pad and the Size
   slider.
 - Tests: `cameraPanelFramingControls` (~line 2087) instantiates `LayoutPanel`; rename it
-  `layoutPanelWebcamFraming`. Add one assertion: after `editor.setProjectValue("camera.layout", "bubble")`
+  `layoutPanelCameraFraming`. Add one assertion: after `editor.setProjectValue("camera.layout", "bubble")`
   the item `cameraFramingZoom` is not visible (`isVisible()` false) — find the pad by giving it
   `objectName: "cameraPositionPad"` and assert it is visible.
 - Verify: `V-BUILD`.
 
 ---
 
-## Phase 3 — Screen and Webcam panels
+## Phase 3 — Screen and Camera panels
 
-### 3.1 Rename Shape → Screen, Camera → Webcam
+### 3.1 Rename Shape → Screen, Camera stays Camera
 - `SidePanel.qml` sections: `{name:"Screen", meta:"Padding, corners, shadow and border", icon:"square.svg"}`
-  (was Shape) and `{name:"Webcam", meta:"Look of the webcam", icon:"camera.svg"}` (was Camera).
-  Update the name switch ("Screen" → shapePanel, "Webcam" → cameraPanel) and the `onSelectionChanged`
+  (was Shape) and `{name:"Camera", meta:"Look of the camera", icon:"camera.svg"}` (was Camera).
+  Update the name switch ("Screen" → shapePanel, "Camera" → cameraPanel) and the `onSelectionChanged`
   names if they mention them (they don't; Zoom/Clip).
-- `Main.qml`: `showSection("Camera")` → `showSection("Webcam")` everywhere; `forcedTooltip = "Webcam"`.
-- `src/main.cpp` panel map: add "layout"→"Layout", "screen"→"Screen", "webcam"→"Webcam", keep
-  "shape"→"Screen" and "camera"→"Webcam" as aliases.
-- Tests: `sidePanelShowsSectionsByName` uses "Webcam"; add that `showSection("Layout")` loads a
+- `Main.qml`: `showSection("Camera")` → `showSection("Camera")` everywhere; `forcedTooltip = "Camera"`.
+- `src/main.cpp` panel map: add "layout"→"Layout", "screen"→"Screen", "camera"→"Camera", keep
+  "shape"→"Screen" as an alias.
+- Tests: `sidePanelShowsSectionsByName` uses "Camera"; add that `showSection("Layout")` loads a
   panel containing `layoutAspectMenu`.
 - Verify: `V-BUILD`.
 
-### 3.2 Webcam panel content
+### 3.2 Camera panel content
 File `src/ui/qml/CameraPanel.qml`, after Phase 2 it holds: empty state, status, Show camera
 switch, the bubble style controls (Shape group, Corner radius, Shrink while zoomed, Shadow,
 Border), then Full screen / Rotation / Mirror.
-- "Show camera" → text "Show webcam", description "Show the webcam in the video".
-- Empty-state hint: "Turn on Webcam in the launcher before recording to add a webcam."
-- Wrap Shape … Border in `ColumnLayout { objectName: "webcamBubbleStyle"; enabled: editor.activeCameraLayout === "bubble"; opacity: enabled ? 1 : .42 }`
+- "Show camera" → text "Show camera", description "Show the camera in the video".
+- Empty-state hint: "Turn on Camera in the launcher before recording to add a camera."
+- Wrap Shape … Border in `ColumnLayout { objectName: "cameraBubbleStyle"; enabled: editor.activeCameraLayout === "bubble"; opacity: enabled ? 1 : .42 }`
   preceded by `PanelHeading { text: "Bubble style" }` and, visible only in Split,
-  `Label { objectName: "webcamBubbleStyleNote"; text: "Bubble style applies when Layout is Bubble." }` (muted small).
+  `Label { objectName: "cameraBubbleStyleNote"; text: "Bubble style applies when Layout is Bubble." }` (muted small).
   Check after Phase 2 that no leftover `visible: editor.activeCameraLayout === "bubble"` wrapper
   hides these controls in Split; the new rule is "shown, disabled in Split".
-- Full screen hint → "Clips set to Show: Webcam fill the frame with the webcam. Set it per clip in Clip."
-- Test first (new slot `webcamPanelIsLookOnly`): instantiate `CameraPanel` with a camera bundle at
+- Full screen hint → "Clips set to Show: Camera fill the frame with the camera. Set it per clip in Clip."
+- Test first (new slot `cameraPanelIsLookOnly`): instantiate `CameraPanel` with a camera bundle at
   9:16 (Split): `cameraLayoutGroup`, `cameraSplitRatioGroup`, `cameraFramingZoom` are **absent**
-  (`findItem` returns nullptr); `webcamBubbleStyle` exists with `enabled` false and
-  `webcamBubbleStyleNote` visible; after `camera.layout` "bubble", `webcamBubbleStyle.enabled` is true.
+  (`findItem` returns nullptr); `cameraBubbleStyle` exists with `enabled` false and
+  `cameraBubbleStyleNote` visible; after `camera.layout` "bubble", `cameraBubbleStyle.enabled` is true.
 - Verify: `V-BUILD`.
 
 ### 3.3 Screen panel wording
@@ -188,25 +191,36 @@ File `src/ui/qml/ShapePanel.qml`.
 
 ### 3.4 Timeline wording
 - `src/ui/qml/Timeline.qml`: the third track row `{name: "Camera", icon: "camera.svg"}` →
-  `{name: "Webcam", …}` (~194); the camera block label `text: "Camera"` (~524) → "Webcam".
+  `{name: "Camera", …}` (~194); the camera block label `text: "Camera"` (~524) → "Camera".
   Before changing, `grep -n '"Camera"' src/ui/qml/Timeline.qml tests/*.cpp` and make sure no code
   compares against the row name; if something does, update it in the same commit and say so.
 - Verify: `V-BUILD`.
 
 ---
 
+### 3.4 No "webcam" anywhere in the UI (PF, 2026-11-11)
+- Change every user-facing string that says webcam/Webcam to camera/Camera, wording otherwise the
+  same: `src/ui/qml/Launcher.qml` (the source row `title: "Webcam"` ~460, the self-view description
+  "Floating preview of your webcam" ~590), `src/ui/qml/CameraPanel.qml` ("No webcam in this
+  recording", "Overlay the webcam on the recording", the full-screen hint), `SidePanel.qml` meta,
+  and any other QML/C++/Rust string shown to the user (`grep -rn -i webcam src crates --include=*.qml --include=*.cpp --include=*.rs`
+  and judge each hit: identifiers, CLI flags like `--with-webcam`, settings keys and log lines stay).
+- Test: extend an existing launcher or panel test, or add `noWebcamInUi`, asserting the launcher's
+  source row title is "Camera".
+- Verify: `V-BUILD`. Commit "UI: say camera, not webcam".
+
 ## Phase 4 — Clip "Show"
 
 ### 4.1 Clip panel and clip label menu
 - `src/ui/qml/ClipPanel.qml` (~36–55): `PanelLabel` text "Layout" → "Show"; options →
-  `[{value:"default", label:"Both"}, {value:"camera", label:"Webcam"}, {value:"screen", label:"Screen"}]`
+  `[{value:"default", label:"Both"}, {value:"camera", label:"Camera"}, {value:"screen", label:"Screen"}]`
   (objectName `clipLayoutGroup` unchanged); hints exactly as in the spec ("Clip panel and timeline").
   The Clip section meta in `SidePanel.qml` → "Trim, speed and what it shows".
-- `src/ui/qml/ClipTrack.qml`: clip label (~258) `"Camera"` → `"Webcam"`; label menu options
-  (~355) → Both / Webcam / Screen with the same values.
+- `src/ui/qml/ClipTrack.qml`: clip label (~258) `"Camera"` → `"Camera"`; label menu options
+  (~355) → Both / Camera / Screen with the same values.
 - Test first (new slot `clipPanelShowLabels`): with a camera bundle and the first clip selected
   (`editor.setProperty("selectedClipId", …)` as `src/main.cpp` does for the clip panel), instantiate
-  `ClipPanel`; `clipLayoutGroup`'s `options` labels are ["Both", "Webcam", "Screen"]; invoking its
+  `ClipPanel`; `clipLayoutGroup`'s `options` labels are ["Both", "Camera", "Screen"]; invoking its
   `changed("camera")` sets the clip's layout to "camera" (read back via `editor.clips`).
 - Verify: `V-BUILD`.
 
@@ -218,7 +232,7 @@ Build `build/omareel`, then for each of these, render the editor offscreen and l
 
 ```
 B=/tmp/claude-1000/-home-pfr/6ea9ca0f-878a-4c73-ab17-8702be44a1da/scratchpad/split-test.omareel
-for p in layout screen webcam clip; do
+for p in layout screen camera clip; do
   OMAREEL_SCREENSHOT=/tmp/claude-1000/-home-pfr/6ea9ca0f-878a-4c73-ab17-8702be44a1da/scratchpad/panel-$p-split.png \
   OMAREEL_SCREENSHOT_PANEL=$p OMAREEL_SCREENSHOT_SIZE=1400x900 QT_QPA_PLATFORM=offscreen \
   timeout 40 build/omareel edit "$B"
@@ -226,10 +240,10 @@ done
 ```
 
 and again with `OMAREEL_SCREENSHOT_PROJECT_VALUES='{"aspect":"16:9","camera.layout":"bubble"}'`
-into `panel-$p-bubble.png`. Check: Layout shows Canvas, Webcam layout, the full-width Split row
-with "Screen on top, webcam below" (9:16), Screen and Webcam framing, the tip; in Bubble the
-corner pad and Size. Screen shows only frame style. Webcam shows no placement controls, bubble
-style disabled in Split. Clip shows "Show: Both / Webcam / Screen". The rail has 9 buttons and
+into `panel-$p-bubble.png`. Check: Layout shows Canvas, Camera layout, the full-width Split row
+with "Screen on top, camera below" (9:16), Screen and Camera framing, the tip; in Bubble the
+corner pad and Size. Screen shows only frame style. Camera shows no placement controls, bubble
+style disabled in Split. Clip shows "Show: Both / Camera / Screen". The rail has 9 buttons and
 fits. Nothing is elided that shouldn't be.
 (`OMAREEL_SCREENSHOT_PROJECT_VALUES` is documented in `docs/USAGE.md` ~274; check its exact
 format there before running.)
@@ -240,10 +254,10 @@ format there before running.)
 
 ### 6.1 Docs
 - `docs/USAGE.md`: update every mention of the Camera panel, Shape panel, "Layout control",
-  clip layouts ("Screen & camera / Camera / Screen" → "Show: Both / Webcam / Screen") to the new
+  clip layouts ("Screen & camera / Camera / Screen" → "Show: Both / Camera / Screen") to the new
   names; add one short paragraph "Side panel" listing the sections and what each holds, as in
   the spec table. In the debug section, list `OMAREEL_SCREENSHOT_PANEL` values
-  `background|layout|screen|cursor|zoom|clip|webcam|keystrokes|audio` and note the `shape` /
+  `background|layout|screen|cursor|zoom|clip|camera|keystrokes|audio` and note the `shape` /
   `camera` aliases.
 - Verify: read it back.
 
