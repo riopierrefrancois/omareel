@@ -151,7 +151,7 @@ Item {
                         height: filmstrip.height
                         asynchronous: true
                         fillMode: Image.PreserveAspectCrop
-                        sourceSize: Qt.size(160, 90)
+                        sourceSize: Qt.size(320, 180)
                         source: {
                             const revision = editor.videoThumbnailRevision
                             const sourceTime = clipBlock.displayedIn

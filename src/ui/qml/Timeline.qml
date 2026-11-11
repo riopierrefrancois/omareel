@@ -480,7 +480,7 @@ FocusScope {
                             Image {
                                 anchors.fill: parent
                                 source: modelData
-                                sourceSize: Qt.size(112, 72)
+                                sourceSize: Qt.size(224, 144)
                                 fillMode: Image.PreserveAspectCrop
                                 smooth: true
                             }

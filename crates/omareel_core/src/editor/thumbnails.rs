@@ -63,15 +63,15 @@ pub fn video_fingerprint(video_path: &str) -> String {
     qdir::sha256_hex(identity.as_bytes())[..16].to_owned()
 }
 
-/// `thumbnailCacheDirectory(videoPath, suffix)`: `<cache>/clip-filmstrips-v2/<fingerprint><suffix>`;
+/// `thumbnailCacheDirectory(videoPath, suffix)`: `<cache>/clip-filmstrips-v3/<fingerprint><suffix>`;
 /// the suffix separates differently filtered frames of the same file.
 pub fn thumbnail_cache_directory(cache_location: &str, video_path: &str, suffix: &str) -> String {
-    qdir::file_path(cache_location, &format!("clip-filmstrips-v2/{}{suffix}", video_fingerprint(video_path)))
+    qdir::file_path(cache_location, &format!("clip-filmstrips-v3/{}{suffix}", video_fingerprint(video_path)))
 }
 
-/// `startCameraThumbnailBuild`'s cache: `<cache>/camera-filmstrips/<fingerprint>`.
+/// `startCameraThumbnailBuild`'s cache: `<cache>/camera-filmstrips-v2/<fingerprint>`.
 pub fn camera_thumbnail_cache_directory(cache_location: &str, video_path: &str) -> String {
-    qdir::file_path(cache_location, &format!("camera-filmstrips/{}", video_fingerprint(video_path)))
+    qdir::file_path(cache_location, &format!("camera-filmstrips-v2/{}", video_fingerprint(video_path)))
 }
 
 /// A filmstrip frame's file name: its time in milliseconds, ten digits.
@@ -92,9 +92,9 @@ pub fn cached_thumbnails(cache_directory: &str) -> BTreeSet<i32> {
 }
 
 /// The `ffmpeg` arguments `buildVideoThumbnail` runs: the frame at `milliseconds`, filtered,
-/// covering 160x90.
+/// covering 320x180.
 pub fn video_thumbnail_args(video_path: &str, filter: &str, output: &str, milliseconds: i32) -> Vec<String> {
-    let scale = "scale=160:90:force_original_aspect_ratio=increase,crop=160:90";
+    let scale = "scale=320:180:force_original_aspect_ratio=increase,crop=320:180";
     let vf = if filter.is_empty() { scale.to_owned() } else { format!("{filter},{scale}") };
     [
         "-v",
@@ -140,7 +140,7 @@ pub fn build_video_thumbnail(video_path: &str, filter: &str, path: &str, millise
         && crate::media_av::thumbnail(
             video_path,
             f64::from(milliseconds) / 1000.0,
-            (160, 90),
+            (320, 180),
             4,
             THUMBNAIL_DECODE_THREADS,
             &temporary,
@@ -176,7 +176,7 @@ pub fn trim_thumbnail_cache(directory: &str) {
     }
 }
 
-/// The `ffmpeg` arguments for one camera strip frame at `timestamp` seconds, covering 112x72.
+/// The `ffmpeg` arguments for one camera strip frame at `timestamp` seconds, covering 224x144.
 pub fn camera_thumbnail_args(video_path: &str, timestamp: f64, output: &str) -> Vec<String> {
     [
         "-v",
@@ -188,7 +188,7 @@ pub fn camera_thumbnail_args(video_path: &str, timestamp: f64, output: &str) -> 
         "-frames:v",
         "1",
         "-vf",
-        "scale=112:72:force_original_aspect_ratio=increase,crop=112:72",
+        "scale=224:144:force_original_aspect_ratio=increase,crop=224:144",
         "-q:v",
         "5",
         "-y",
@@ -216,7 +216,7 @@ pub fn build_camera_thumbnails(video_path: &str, duration: f64, cache_directory:
             }
             let timestamp = duration * (index as f64 + 0.5) / CAMERA_THUMBNAIL_COUNT as f64;
             let output = thumbnail_path(index);
-            if crate::media_av::thumbnail(video_path, timestamp, (112, 72), 5, THUMBNAIL_DECODE_THREADS, &output)
+            if crate::media_av::thumbnail(video_path, timestamp, (224, 144), 5, THUMBNAIL_DECODE_THREADS, &output)
                 && FileInfo::new(output.as_str()).size() > 0
             {
                 continue;
@@ -671,17 +671,17 @@ mod tests {
             video_thumbnail_args("/b/screen.mp4", "", "/c/0000001300.jpg.7.tmp.jpg", 1300),
             [
                 "-v", "error", "-threads", "2", "-ss", "1.300", "-i", "/b/screen.mp4", "-frames:v", "1", "-an", "-vf",
-                "scale=160:90:force_original_aspect_ratio=increase,crop=160:90", "-q:v", "4", "-y",
+                "scale=320:180:force_original_aspect_ratio=increase,crop=320:180", "-q:v", "4", "-y",
                 "/c/0000001300.jpg.7.tmp.jpg"
             ]
         );
-        assert_eq!(video_thumbnail_args("v", "hflip,transpose=clock", "o", 5)[12], "hflip,transpose=clock,scale=160:90:force_original_aspect_ratio=increase,crop=160:90");
+        assert_eq!(video_thumbnail_args("v", "hflip,transpose=clock", "o", 5)[12], "hflip,transpose=clock,scale=320:180:force_original_aspect_ratio=increase,crop=320:180");
         assert_eq!(video_thumbnail_args("v", "", "o", 5)[5], "0.005");
         assert_eq!(
             camera_thumbnail_args("/b/camera.mp4", 0.125, "/c/camera-01.jpg"),
             [
                 "-v", "error", "-ss", "0.125", "-i", "/b/camera.mp4", "-frames:v", "1", "-vf",
-                "scale=112:72:force_original_aspect_ratio=increase,crop=112:72", "-q:v", "5", "-y", "/c/camera-01.jpg"
+                "scale=224:144:force_original_aspect_ratio=increase,crop=224:144", "-q:v", "5", "-y", "/c/camera-01.jpg"
             ]
         );
         assert_eq!(thumbnail_file_name(1300), "0000001300.jpg");
@@ -709,12 +709,12 @@ mod tests {
             format!("{}|5|{}", info.canonical_file_path(), info.last_modified_msecs()).as_bytes(),
         )[..16]
             .to_owned();
-        assert_eq!(thumbnail_cache_directory("/cache", &video, ""), format!("/cache/clip-filmstrips-v2/{expected}"));
+        assert_eq!(thumbnail_cache_directory("/cache", &video, ""), format!("/cache/clip-filmstrips-v3/{expected}"));
         assert_eq!(
             thumbnail_cache_directory("/cache", &video, "-camera-r90f"),
-            format!("/cache/clip-filmstrips-v2/{expected}-camera-r90f")
+            format!("/cache/clip-filmstrips-v3/{expected}-camera-r90f")
         );
-        assert_eq!(camera_thumbnail_cache_directory("/cache/", &video), format!("/cache/camera-filmstrips/{expected}"));
+        assert_eq!(camera_thumbnail_cache_directory("/cache/", &video), format!("/cache/camera-filmstrips-v2/{expected}"));
         // A missing file still has a fingerprint: no path, size 0, time 0.
         assert_eq!(video_fingerprint("/nonexistent/x.mp4"), qdir::sha256_hex(b"|0|0")[..16]);
     }

@@ -437,7 +437,7 @@ fn video_thumbnail_urls_follow_source_times() {
     let world = World::new("editor-thumbnails");
     let mut qt = world.open(&world.bundle("thumbnails.omareel"));
     let cache = qt.document.thumbnails.sources["screen"].cache_directory.clone();
-    assert!(cache.starts_with(&world.path("cache/clip-filmstrips-v2/")));
+    assert!(cache.starts_with(&world.path("cache/clip-filmstrips-v3/")));
     // Nothing built yet: the frame at 0.3 s is queued.
     assert_eq!(qt.run(|d| d.video_thumbnail_url(0.25)), "");
     assert!(qt.effects.contains(&Effect::StartNextVideoThumbnail));
@@ -876,7 +876,7 @@ fn camera_timing_and_status() {
     let qt = world.open(&bundle);
     assert_eq!(qt.document.camera_status(), "Webcam: 320×180 @30, offset +0.00 s");
     assert_eq!(qt.document.camera_sync(2.5), Some(CameraSync { target_ms: 2000, tolerance_ms: 250, covered: false }));
-    assert!(qt.document.camera_thumbnail_job().unwrap().cache_directory.contains("/camera-filmstrips/"));
+    assert!(qt.document.camera_thumbnail_job().unwrap().cache_directory.contains("/camera-filmstrips-v2/"));
     std::fs::write(
         format!("{bundle}/capture.json"),
         br#"{"first_frame_us":1000000,"camera":{"first_frame_us":500000}}"#,
@@ -1771,7 +1771,7 @@ fn real_ffmpeg_probes_and_builds_frames() {
 
     let frame = world.path("cache/0000000300.jpg");
     assert!(build_video_thumbnail(&screen, "", &frame, 300));
-    assert_eq!(jpeg_size(&frame), Some((160, 90)));
+    assert_eq!(jpeg_size(&frame), Some((320, 180)));
     // The temporary file is gone.
     let names: Vec<String> = std::fs::read_dir(world.path("cache")).unwrap().map(|e| e.unwrap().file_name().into_string().unwrap()).collect();
     assert_eq!(names, ["0000000300.jpg"]);
@@ -1784,7 +1784,7 @@ fn real_ffmpeg_probes_and_builds_frames() {
     let strip = build_camera_thumbnails(&screen, 1.0, &world.path("camera-cache"));
     assert_eq!(strip.len(), CAMERA_THUMBNAIL_COUNT);
     assert_eq!(strip[0], crate::compat::qurl::from_local_file(&world.path("camera-cache/camera-01.jpg")));
-    assert_eq!(jpeg_size(&world.path("camera-cache/camera-08.jpg")), Some((112, 72)));
+    assert_eq!(jpeg_size(&world.path("camera-cache/camera-08.jpg")), Some((224, 144)));
     assert!(build_camera_thumbnails(&format!("{bundle}/missing.mp4"), 1.0, &world.path("other-cache")).is_empty());
 
     // A video stored turned with a display matrix (a phone's) is left to ffmpeg, which stands it
@@ -1796,11 +1796,11 @@ fn real_ffmpeg_probes_and_builds_frames() {
         30000,
     );
     if made.is_some_and(|f| f.succeeded()) {
-        assert!(crate::media_av::thumbnail(&screen, 0.3, (160, 90), 4, 1, &world.path("upright.jpg")));
-        assert!(!crate::media_av::thumbnail(&turned, 0.3, (160, 90), 4, 1, &world.path("turned.jpg")));
+        assert!(crate::media_av::thumbnail(&screen, 0.3, (320, 180), 4, 1, &world.path("upright.jpg")));
+        assert!(!crate::media_av::thumbnail(&turned, 0.3, (320, 180), 4, 1, &world.path("turned.jpg")));
         let frame = world.path("turned-cache/0000000300.jpg");
         assert!(build_video_thumbnail(&turned, "", &frame, 300));
-        assert_eq!(jpeg_size(&frame), Some((160, 90)));
+        assert_eq!(jpeg_size(&frame), Some((320, 180)));
     } else {
         eprintln!("ffmpeg could not write a display matrix");
     }

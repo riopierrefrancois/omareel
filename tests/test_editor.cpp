@@ -741,20 +741,20 @@ private slots:
         QString firstUrl;
         QTRY_VERIFY_WITH_TIMEOUT(!(firstUrl = editor.videoThumbnailUrl(.25)).isEmpty(), 30000);
         const QImage first(QUrl(firstUrl).toLocalFile());
-        QCOMPARE(first.size(), QSize(160, 90));
+        QCOMPARE(first.size(), QSize(320, 180));
         QCOMPARE(editor.videoThumbnailUrlForClip(.4, 0, .5), firstUrl);
         QString secondUrl;
         QTRY_VERIFY_WITH_TIMEOUT((secondUrl = editor.videoThumbnailUrl(1.25),
             QFileInfo(QUrl(secondUrl).toLocalFile()).completeBaseName().toInt() == 1300), 30000);
         QVERIFY(secondUrl != firstUrl);
         const QImage second(QUrl(secondUrl).toLocalFile());
-        QCOMPARE(second.size(), QSize(160, 90));
+        QCOMPARE(second.size(), QSize(320, 180));
         QVERIFY(first != second);
         QString tightUrl;
         QTRY_VERIFY_WITH_TIMEOUT(!(tightUrl = editor.videoThumbnailUrlForClip(.17, .137, .181)).isEmpty(), 30000);
         const int tightSample = QFileInfo(QUrl(tightUrl).toLocalFile()).completeBaseName().toInt();
         QVERIFY(tightSample >= 137 && tightSample <= 180);
-        QCOMPARE(QImage(QUrl(tightUrl).toLocalFile()).size(), QSize(160, 90));
+        QCOMPARE(QImage(QUrl(tightUrl).toLocalFile()).size(), QSize(320, 180));
     }
 
     void playbackStaysWithinSelectedRange()
@@ -1642,7 +1642,7 @@ private slots:
         QString cameraThumbnail;
         QTRY_VERIFY_WITH_TIMEOUT(!(cameraThumbnail = editor.clipThumbnailUrl(first, .5, 0, 1)).isEmpty(), 30000);
         QVERIFY2(cameraThumbnail.contains(QStringLiteral("-camera-r0/")), qPrintable(cameraThumbnail));
-        QCOMPARE(QImage(QUrl(cameraThumbnail).toLocalFile()).size(), QSize(160, 90));
+        QCOMPARE(QImage(QUrl(cameraThumbnail).toLocalFile()).size(), QSize(320, 180));
         QString screenThumbnail;
         QTRY_VERIFY_WITH_TIMEOUT(!(screenThumbnail = editor.clipThumbnailUrl(second, 1.5, 1, 2)).isEmpty(), 30000);
         QVERIFY(!screenThumbnail.contains(QStringLiteral("-camera-")));
