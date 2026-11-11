@@ -301,6 +301,8 @@ pub mod qobject {
         #[qinvokable]
         fn save_now(self: Pin<&mut Editor>) -> bool;
         #[qinvokable]
+        fn trash_recording(self: Pin<&mut Editor>) -> bool;
+        #[qinvokable]
         fn play_pause(self: Pin<&mut Editor>);
         #[qinvokable]
         fn play(self: Pin<&mut Editor>);
@@ -471,6 +473,8 @@ pub mod qobject {
         #[inherit]
         fn playback_load_media(self: Pin<&mut Editor>, path: &QString);
         #[inherit]
+        fn playback_release(self: Pin<&mut Editor>);
+        #[inherit]
         fn playback_warm_up(self: Pin<&mut Editor>, player: i32);
         #[inherit]
         fn playback_cancel_warm_up(self: Pin<&mut Editor>, player: i32);
@@ -609,6 +613,8 @@ pub struct EditorRust {
     project_map: RefCell<Option<(u64, QMap<QMapPair_QString_QVariant>)>>,
     workers: RefCell<Vec<JoinHandle<()>>>,
     wallpaper_jobs: Arc<WallpaperQueue>,
+    /// Set once the bundle has moved to the Trash: nothing may write to the old path afterwards.
+    trashed: bool,
 }
 
 impl EditorRust {
@@ -632,6 +638,7 @@ impl EditorRust {
             project_map: RefCell::new(None),
             workers: RefCell::new(Vec::new()),
             wallpaper_jobs: Arc::new(WallpaperQueue::default()),
+            trashed: false,
         }
     }
 
@@ -665,9 +672,11 @@ impl Drop for EditorRust {
     /// `~Editor`: unsaved edits are written, then the workers are waited for. Nothing is
     /// emitted: the object is being destroyed. EditorBase cancels a running export after this.
     fn drop(&mut self) {
-        if let Some(document) = self.document.as_mut() {
-            if document.dirty() {
-                document.save_now();
+        if !self.trashed {
+            if let Some(document) = self.document.as_mut() {
+                if document.dirty() {
+                    document.save_now();
+                }
             }
         }
         for worker in self.workers.get_mut().drain(..) {
@@ -797,6 +806,9 @@ impl qobject::Editor {
 
     /// `rebuildMotion()`: builds the motion track off the GUI thread, unless a build runs.
     fn rebuild_motion(mut self: Pin<&mut Self>) {
+        if self.trashed {
+            return;
+        }
         let Some(job) = self.as_mut().rust_mut().document.as_mut().and_then(Document::motion_job) else { return };
         let thread = self.qt_thread();
         self.spawn(move || {
@@ -809,11 +821,17 @@ impl qobject::Editor {
 
     /// `startCameraThumbnailBuild()`.
     fn start_camera_thumbnail_build(&self) {
+        if self.trashed {
+            return;
+        }
         let Some(job) = self.document.as_ref().and_then(Document::camera_thumbnail_job) else { return };
         let thread = self.qt_thread();
         self.spawn(move || {
             let urls = job.run();
             let _ = thread.queue(move |mut editor| {
+                if editor.trashed {
+                    return;
+                }
                 editor.as_mut().rust_mut().camera_thumbnails = url_list(&urls);
                 editor.camera_thumbnails_changed();
             });
@@ -823,7 +841,7 @@ impl qobject::Editor {
     /// `startNextVideoThumbnail()`: the queued filmstrip frames, as many at once as
     /// [`omareel_core::editor::thumbnail_workers`] allows, unless playing or scrubbing.
     fn start_next_video_thumbnail(mut self: Pin<&mut Self>) {
-        if self.thumbnails_held {
+        if self.trashed || self.thumbnails_held {
             return;
         }
         let (playing, scrubbing) = (self.transport.playing, self.transport.scrubbing);
@@ -838,6 +856,9 @@ impl qobject::Editor {
             self.spawn(move || {
                 let succeeded = job.run();
                 let _ = thread.queue(move |editor| {
+                    if editor.trashed {
+                        return;
+                    }
                     editor.edit(|document| document.finish_video_thumbnail(&job, succeeded));
                 });
             });
@@ -846,11 +867,17 @@ impl qobject::Editor {
 
     /// The import [`Effect::StartImport`] asks for, then `finishImport()`.
     fn start_import(&self, source: &str) {
+        if self.trashed {
+            return;
+        }
         let Some(job) = self.document.as_ref().map(|document| document.import_job(source)) else { return };
         let thread = self.qt_thread();
         self.spawn(move || {
             let imported = job.run();
             let _ = thread.queue(move |editor| {
+                if editor.trashed {
+                    return;
+                }
                 editor.edit(|document| document.finish_import(imported));
             });
         });
@@ -1344,8 +1371,34 @@ impl qobject::Editor {
         self.edit(Document::redo);
     }
 
-    fn save_now(self: Pin<&mut Self>) -> bool {
+    fn save_now(mut self: Pin<&mut Self>) -> bool {
+        if self.trashed {
+            return false;
+        }
         self.edit(Document::save_now).unwrap_or(false)
+    }
+
+    /// Moves the open bundle to the desktop Trash. Nothing may write to the old path after this.
+    fn trash_recording(mut self: Pin<&mut Self>) -> bool {
+        if self.trashed || self.document.is_none() {
+            return false;
+        }
+        self.as_mut().pause();
+        self.as_mut().stop_editor_timer(AUTOSAVE_TIMER);
+        self.as_mut().rust_mut().trashed = true;
+        // Running workers (an import copy, thumbnails) finish before the directory moves, so none
+        // of them can recreate the old path afterwards.
+        let workers: Vec<_> = self.as_mut().rust_mut().workers.get_mut().drain(..).collect();
+        for worker in workers {
+            let _ = worker.join();
+        }
+        self.as_mut().playback_release();
+        let path = qstring(&self.bundle_path);
+        if !qobject::move_to_trash(&path) {
+            self.as_mut().rust_mut().trashed = false;
+            return false;
+        }
+        true
     }
 
     fn set_playback_range(self: Pin<&mut Self>, from: f64, to: f64) {
@@ -1465,6 +1518,9 @@ impl qobject::Editor {
 
     /// `insertMedia(url)`, pausing before the import starts as the C++ did.
     fn insert_media(mut self: Pin<&mut Self>, url: &QUrl) {
+        if self.trashed {
+            return;
+        }
         let source = qobject::url_path(url).to_string();
         if !self.document.as_ref().is_some_and(|document| document.can_insert_media(&source)) {
             return;
@@ -1565,7 +1621,9 @@ impl qobject::Editor {
 
     /// `exportTo(path, settings)`: saves, then starts an exporter with the dialog's settings.
     fn export_to_with_settings(mut self: Pin<&mut Self>, path: &QString, settings: &QMap<QMapPair_QString_QVariant>) {
-        if self.document.as_ref().is_none_or(|document| document.export_state().exporting) {
+        if self.trashed
+            || self.document.as_ref().is_none_or(|document| document.export_state().exporting)
+        {
             return;
         }
         self.as_mut().save_now();
@@ -2000,7 +2058,7 @@ impl qobject::Editor {
 
     /// Starts the filmstrip and the camera strip, once (see `thumbnails_held`).
     fn release_thumbnails(mut self: Pin<&mut Self>) {
-        if !self.thumbnails_held {
+        if self.trashed || !self.thumbnails_held {
             return;
         }
         self.as_mut().rust_mut().thumbnails_held = false;
@@ -2104,7 +2162,9 @@ impl qobject::Editor {
     fn timer_fired(self: Pin<&mut Self>, timer: i32) {
         match timer {
             AUTOSAVE_TIMER => {
-                self.save_now();
+                if !self.trashed {
+                    self.save_now();
+                }
             }
             MOTION_TIMER => self.rebuild_motion(),
             SCRUB_TIMER => self.flush_scrub_seek(),

@@ -41,6 +41,9 @@ public:
     // ready until its sink shows one.
     void loadMedia(const QString &path);
 
+    // Stops the players and drops their files, so the bundle can leave the disk.
+    void release();
+
     // Shows a player through a QML VideoOutput's videoSink; false when it has none.
     bool attachVideoOutput(Player player, QObject *output);
     // Runs the screen or camera player until its sink shows a frame, then pauses it there, the

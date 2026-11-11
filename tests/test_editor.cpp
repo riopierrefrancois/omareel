@@ -7,6 +7,7 @@
 #include <QElapsedTimer>
 #include <QFile>
 #include <QFileInfo>
+#include <QScopeGuard>
 #include <QProcess>
 #include <QSignalSpy>
 #include <QTemporaryDir>
@@ -2292,6 +2293,34 @@ private slots:
         QTRY_VERIFY(!isEnabled(screenDrag));
         editor.setPickingZoomTarget(false);
         QTRY_VERIFY(isEnabled(screenDrag));
+    }
+
+    void trashRecordingMovesTheBundle()
+    {
+        QTemporaryDir data;
+        QVERIFY(data.isValid());
+        const QByteArray previous = qgetenv("XDG_DATA_HOME");
+        qputenv("XDG_DATA_HOME", data.path().toUtf8());
+        const auto restore = qScopeGuard([previous] { qputenv("XDG_DATA_HOME", previous); });
+
+        const QString bundle = plainBundle(QStringLiteral("trash-me.omareel"));
+        QFile::remove(QDir(bundle).filePath(QStringLiteral("project.json")));
+        Editor editor(bundle);
+        QVERIFY2(editor.isValid(), qPrintable(editor.errorString()));
+        editor.setProjectValue(QStringLiteral("frame.padding"), 0.2);
+        QVERIFY(editor.dirty());
+
+        QVERIFY(editor.trashRecording());
+        QVERIFY(!QFileInfo::exists(bundle));
+        const QDir files(QDir(data.path()).filePath(QStringLiteral("Trash/files")));
+        QVERIFY2(files.exists(), qPrintable(files.path()));
+        QVERIFY2(files.entryList(QDir::Dirs | QDir::NoDotAndDotDot).contains(QFileInfo(bundle).fileName()),
+                 qPrintable(files.entryList(QDir::Dirs | QDir::NoDotAndDotDot).join(QLatin1Char(','))));
+
+        // Nothing may recreate the old bundle after the trash: not Save now, not the autosave.
+        QVERIFY(!editor.saveNow());
+        QTest::qWait(700);
+        QVERIFY(!QFileInfo::exists(bundle));
     }
 
 private:

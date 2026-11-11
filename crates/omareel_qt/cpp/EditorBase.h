@@ -73,6 +73,7 @@ protected:
     void playbackLoadScreen(const QString &path) { m_playback.loadScreen(path); }
     void playbackLoadCamera(const QString &path) { m_playback.loadCamera(path); }
     void playbackLoadMedia(const QString &path) { m_playback.loadMedia(path); }
+    void playbackRelease() { m_playback.release(); }
     void playbackWarmUp(int player) { m_playback.warmUp(PlaybackDriver::Player(player)); }
     void playbackCancelWarmUp(int player) { m_playback.cancelWarmUp(PlaybackDriver::Player(player)); }
     bool playbackWarming(int player) const { return m_playback.warming(PlaybackDriver::Player(player)); }

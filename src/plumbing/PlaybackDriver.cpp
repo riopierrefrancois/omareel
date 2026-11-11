@@ -69,6 +69,20 @@ void PlaybackDriver::loadMedia(const QString &path)
     m_mediaPlayer.setSource(QUrl::fromLocalFile(path));
 }
 
+void PlaybackDriver::release()
+{
+    for (QMediaPlayer *player : {&m_player, &m_cameraPlayer, &m_mediaPlayer}) {
+        player->stop();
+        player->setSource(QUrl());
+    }
+    m_mediaFrameReady = false;
+    m_pendingMediaSeekMs = -1;
+    m_pendingMediaWillPlay = false;
+    m_warmingPreview = false;
+    m_warmingCameraPreview = false;
+    m_warmingMediaPreview = false;
+}
+
 bool PlaybackDriver::attachVideoOutput(Player which, QObject *output)
 {
     QVideoSink *sink = output ? output->property("videoSink").value<QVideoSink *>() : nullptr;
