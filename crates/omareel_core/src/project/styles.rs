@@ -88,6 +88,20 @@ impl Default for Frame {
     }
 }
 
+/// The screen's framing inside its region: zoom 1 to 4, where 1 is the fitted frame, and pan
+/// each axis -1 to 1; x +1 moves the picture right, y +1 up.
+#[derive(Clone, Debug, PartialEq)]
+pub struct ScreenFraming {
+    pub zoom: f64,
+    pub pan: PointF,
+}
+
+impl Default for ScreenFraming {
+    fn default() -> ScreenFraming {
+        ScreenFraming { zoom: 1.0, pan: PointF::new(0.0, 0.0) }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct Cursor {
     pub visible: bool,
@@ -193,6 +207,7 @@ pub struct Project {
     pub zoom_style: ZoomStyle,
     pub background: Background,
     pub frame: Frame,
+    pub screen: ScreenFraming,
     pub cursor: Cursor,
     pub keystrokes: Keystrokes,
     pub audio: Audio,
@@ -217,6 +232,7 @@ impl Default for Project {
             zoom_style: ZoomStyle::default(),
             background: Background::default(),
             frame: Frame::default(),
+            screen: ScreenFraming::default(),
             cursor: Cursor::default(),
             keystrokes: Keystrokes::default(),
             audio: Audio::default(),
