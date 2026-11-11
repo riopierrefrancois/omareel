@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Effects
 import Omareel
+import "Framing.js" as Framing
 
 Item {
     id: composition
@@ -35,12 +36,19 @@ Item {
     property real borderWidth: !noBackground && comp.project.frame.border.enabled
                                ? comp.project.frame.border.width * ref : 0
     property real sourceAspect: (comp.sourceWidth * comp.project.crop.w) / Math.max(1, comp.sourceHeight * comp.project.crop.h)
-    property real videoWidth: stretchScreen ? regionWidth
+    property real fitWidth: stretchScreen ? regionWidth
         : Math.max(1, Math.min(availableWidth - 2 * borderWidth,
                               (availableHeight - 2 * borderWidth) * sourceAspect))
-    property real videoHeight: stretchScreen ? regionHeight : videoWidth / sourceAspect
-    readonly property real frameX: regionX + (regionWidth - videoWidth) / 2
-    readonly property real frameY: regionY + (regionHeight - videoHeight) / 2
+    property real fitHeight: stretchScreen ? regionHeight : fitWidth / sourceAspect
+    readonly property real screenZoom: comp.project.screen ? comp.project.screen.zoom : 1
+    readonly property real screenPanX: comp.project.screen && comp.project.screen.pan ? comp.project.screen.pan.x : 0
+    readonly property real screenPanY: comp.project.screen && comp.project.screen.pan ? comp.project.screen.pan.y : 0
+    readonly property var screenRect: Framing.screenFrame(regionWidth, regionHeight, fitWidth, fitHeight,
+                                                           screenZoom, screenPanX, screenPanY)
+    property real videoWidth: screenRect.width
+    property real videoHeight: screenRect.height
+    readonly property real frameX: regionX + screenRect.x
+    readonly property real frameY: regionY + screenRect.y
     readonly property real frameWidth: videoWidth
     readonly property real frameHeight: videoHeight
     readonly property bool cameraShown: comp.cameraAvailable && comp.cameraVisible
@@ -75,7 +83,7 @@ Item {
         y: composition.regionY
         width: composition.regionWidth
         height: composition.regionHeight
-        clip: composition.splitAmount > 0
+        clip: composition.splitAmount > 0 || composition.screenZoom > 1
         visible: !composition.screenCovered
 
         Item {
@@ -96,8 +104,8 @@ Item {
             }
             RoundedFrame {
                 id: frame
-                x: (screenClip.width - width) / 2
-                y: (screenClip.height - height) / 2
+                x: composition.screenRect.x
+                y: composition.screenRect.y
                 width: composition.videoWidth
                 height: composition.videoHeight
                 settings: comp.project.frame

@@ -1411,6 +1411,63 @@ private slots:
         QVERIFY(ppp(1000, 600, 800, 450, 1).value("y").toDouble() > 0);
     }
 
+    void compositionScreenFraming()
+    {
+        const QString bundle = plainBundle(QStringLiteral("composition-framing.omareel"));
+        QFile::remove(QDir(bundle).filePath(QStringLiteral("project.json")));
+        Editor editor(bundle);
+        QVERIFY2(editor.isValid(), qPrintable(editor.errorString()));
+
+        Theme theme;
+        QQmlEngine engine;
+        engine.rootContext()->setContextProperty(QStringLiteral("editor"), &editor);
+        engine.rootContext()->setContextProperty(QStringLiteral("comp"), &editor);
+        engine.rootContext()->setContextProperty(QStringLiteral("theme"), &theme);
+        QQmlComponent component(&engine);
+        component.setData(R"(
+            import QtQuick
+            import QtQuick.Window
+            import Omareel
+            Window {
+                width: 1200; height: 900; visible: true
+                Composition { objectName: "composition" }
+            })", QUrl());
+        QVERIFY2(component.isReady(), qPrintable(component.errorString()));
+        std::unique_ptr<QObject> object(component.create());
+        auto *window = qobject_cast<QQuickWindow *>(object.get());
+        QVERIFY(window);
+        QVERIFY(QTest::qWaitForWindowExposed(window));
+        auto *composition = window->findChild<QQuickItem *>(QStringLiteral("composition"));
+        QTRY_VERIFY(composition);
+        QTRY_VERIFY(composition->width() > 0 && composition->height() > 0);
+
+        const auto value = [composition](const char *name) {
+            return composition->property(name).toDouble();
+        };
+        const double regionWidth = value("regionWidth");
+        const double regionHeight = value("regionHeight");
+
+        // Zoom 1 is the fitted frame, centred in its region as before.
+        const double fitWidth = value("frameWidth");
+        const double fitHeight = value("frameHeight");
+        QVERIFY(fitWidth > 0 && fitHeight > 0);
+        QVERIFY(qAbs(value("frameX") - (regionWidth - fitWidth) / 2) < 1e-6);
+        QVERIFY(qAbs(value("frameY") - (regionHeight - fitHeight) / 2) < 1e-6);
+
+        // Zoom 2 doubles the frame about the centre.
+        editor.setProjectValue(QStringLiteral("screen.zoom"), 2.0);
+        QTRY_COMPARE(value("screenZoom"), 2.0);
+        QTRY_VERIFY(qAbs(value("frameWidth") - 2 * fitWidth) < 1e-6);
+        QVERIFY(qAbs(value("frameHeight") - 2 * fitHeight) < 1e-6);
+        QVERIFY(qAbs(value("frameX") - (regionWidth - value("frameWidth")) / 2) < 1e-6);
+        QVERIFY(qAbs(value("frameY") - (regionHeight - value("frameHeight")) / 2) < 1e-6);
+
+        // Panning the picture right puts the frame's left edge on the region's left edge.
+        editor.setProjectValue(QStringLiteral("screen.pan.x"), 1.0);
+        QTRY_COMPARE(value("screenPanX"), 1.0);
+        QTRY_VERIFY(qAbs(value("frameX")) < 1e-6);
+    }
+
     void newProjectUsesCapturedCameraOrientation()
     {
         const QString bundle = m_temporary.filePath(QStringLiteral("camera-default.omareel"));
