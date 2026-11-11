@@ -129,6 +129,9 @@ Item {
         splitMode: composition.splitActive
         bandRect: Qt.rect(comp.layout.cameraX || 0, comp.layout.cameraY || 0,
                           comp.layout.cameraWidth || 0, comp.layout.cameraHeight || 0)
+        splitZoom: comp.project.camera.splitZoom === undefined ? 1 : comp.project.camera.splitZoom
+        splitPanX: comp.project.camera.splitPan ? comp.project.camera.splitPan.x : 0
+        splitPanY: comp.project.camera.splitPan ? comp.project.camera.splitPan.y : 0
         zoomScale: comp.zoom.scale
         outputWidth: composition.width
         outputHeight: composition.height
