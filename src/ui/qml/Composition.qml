@@ -54,6 +54,13 @@ Item {
     readonly property bool cameraShown: comp.cameraAvailable && comp.cameraVisible
     // How far the current clip's layout has grown the camera to full frame.
     readonly property real cameraFull: cameraShown ? comp.layout.cameraFull : 0
+    // The camera's source facts and Split framing, for the preview's drag and wheel handlers.
+    readonly property int cameraSourceWidth: comp.cameraSourceWidth
+    readonly property int cameraSourceHeight: comp.cameraSourceHeight
+    readonly property int cameraRotation: comp.project.camera.rotation
+    readonly property real cameraSplitZoom: comp.project.camera.splitZoom === undefined ? 1 : comp.project.camera.splitZoom
+    readonly property real cameraSplitPanX: comp.project.camera.splitPan ? comp.project.camera.splitPan.x : 0
+    readonly property real cameraSplitPanY: comp.project.camera.splitPan ? comp.project.camera.splitPan.y : 0
     // An inserted video replaces the recording, its camera and keys while it plays.
     readonly property bool mediaActive: comp.media.active
     // Once the camera or an inserted video covers the canvas, nothing beneath needs drawing.

@@ -2213,6 +2213,87 @@ private slots:
         QTRY_VERIFY(zoom->isEnabled());
     }
 
+    void previewFramingDragAreas()
+    {
+        Editor editor(cameraBundle(QStringLiteral("preview-framing.omareel")));
+        QVERIFY2(editor.isValid(), qPrintable(editor.errorString()));
+        QVERIFY(editor.hasCamera());
+
+        Theme theme;
+        QQmlEngine engine;
+        engine.rootContext()->setContextProperty(QStringLiteral("editor"), &editor);
+        engine.rootContext()->setContextProperty(QStringLiteral("comp"), &editor);
+        engine.rootContext()->setContextProperty(QStringLiteral("theme"), &theme);
+        QQmlComponent component(&engine);
+        component.setData(R"(
+            import QtQuick
+            import QtQuick.Window
+            import Omareel
+            Window {
+                width: 1200; height: 900; visible: true
+                PreviewPane { anchors.fill: parent; cropMode: false }
+            })", QUrl());
+        QVERIFY2(component.isReady(), qPrintable(component.errorString()));
+        std::unique_ptr<QObject> object(component.create());
+        auto *window = qobject_cast<QQuickWindow *>(object.get());
+        QVERIFY(window);
+        QVERIFY(QTest::qWaitForWindowExposed(window));
+
+        const auto findItem = [](QQuickItem *parent, const QString &name) {
+            std::function<QQuickItem *(QQuickItem *)> visit = [&](QQuickItem *item) -> QQuickItem * {
+                if (item->objectName() == name) return item;
+                for (QQuickItem *child : item->childItems())
+                    if (QQuickItem *match = visit(child)) return match;
+                return nullptr;
+            };
+            return visit(parent);
+        };
+        auto *screenDrag = findItem(window->contentItem(), QStringLiteral("screenFramingDrag"));
+        auto *cameraDrag = findItem(window->contentItem(), QStringLiteral("cameraFramingDrag"));
+        QTRY_VERIFY(screenDrag);
+        QTRY_VERIFY(cameraDrag);
+        QTRY_VERIFY(screenDrag->isVisible());
+        const auto isEnabled = [](QQuickItem *item) { return item->property("enabled").toBool(); };
+        QVERIFY(isEnabled(screenDrag));
+        // The canvas is 16:9, so there is no camera band to drag.
+        QVERIFY(!isEnabled(cameraDrag));
+
+        // A press and release without movement changes nothing and adds no undo step.
+        const QVariantMap before = editor.projectMap();
+        QVERIFY(!editor.canUndo());
+        const QPoint screenPoint = screenDrag->mapToScene(
+            QPointF(screenDrag->width() / 2, screenDrag->height() / 2)).toPoint();
+        QTest::mousePress(window, Qt::LeftButton, Qt::NoModifier, screenPoint);
+        QTest::mouseRelease(window, Qt::LeftButton, Qt::NoModifier, screenPoint);
+        QCOMPARE(editor.projectMap(), before);
+        QVERIFY(!editor.canUndo());
+
+        // Split enables the band drag; a still press there is still no edit.
+        editor.setProjectValue(QStringLiteral("aspect"), QStringLiteral("9:16"));
+        QTRY_COMPARE(editor.activeCameraLayout(), QStringLiteral("split"));
+        QTRY_VERIFY(isEnabled(cameraDrag));
+        const QVariantMap split = editor.projectMap();
+        const QPoint cameraPoint = cameraDrag->mapToScene(
+            QPointF(cameraDrag->width() / 2, cameraDrag->height() / 2)).toPoint();
+        QTest::mousePress(window, Qt::LeftButton, Qt::NoModifier, cameraPoint);
+        QTest::mouseRelease(window, Qt::LeftButton, Qt::NoModifier, cameraPoint);
+        QCOMPARE(editor.projectMap(), split);
+        // One undo returns to the pre-aspect project, proving no extra step was added.
+        editor.undo();
+        QCOMPARE(editor.projectMap(), before);
+
+        // The zoom target picker takes precedence over the framing drag.
+        if (editor.zooms().isEmpty())
+            QVERIFY(!editor.addZoomAt(1.0).isEmpty());
+        editor.setSelectedZoomId(editor.zooms().first().toMap()
+            .value(QStringLiteral("id")).toString());
+        editor.setPickingZoomTarget(true);
+        QVERIFY(editor.pickingZoomTarget());
+        QTRY_VERIFY(!isEnabled(screenDrag));
+        editor.setPickingZoomTarget(false);
+        QTRY_VERIFY(isEnabled(screenDrag));
+    }
+
 private:
     bool makeVideo(const QString &path, const QString &source, double seconds)
     {

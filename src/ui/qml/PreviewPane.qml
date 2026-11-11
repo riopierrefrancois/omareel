@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Effects
 import Omareel.Ui
+import "Framing.js" as Framing
 
 FocusScope {
     id: root
@@ -103,6 +104,138 @@ FocusScope {
                 onClicked: {
                     const point = scaled.targetFromScene(mouse.x, mouse.y)
                     editor.setZoomTargetFromPreview(point.x, point.y)
+                }
+            }
+            MouseArea {
+                id: screenFramingDrag
+                objectName: "screenFramingDrag"
+                x: Math.max(composition.regionX, composition.frameX)
+                y: Math.max(composition.regionY, composition.frameY)
+                width: Math.max(0, Math.min(composition.regionX + composition.regionWidth,
+                    composition.frameX + composition.frameWidth) - x)
+                height: Math.max(0, Math.min(composition.regionY + composition.regionHeight,
+                    composition.frameY + composition.frameHeight) - y)
+                enabled: !editor.pickingZoomTarget && !root.cropMode && !composition.screenCovered
+                acceptedButtons: Qt.LeftButton
+                hoverEnabled: true
+                cursorShape: pressed ? Qt.ClosedHandCursor : Qt.OpenHandCursor
+                property real pressX: 0
+                property real pressY: 0
+                property real startPanX: 0
+                property real startPanY: 0
+                property bool wheelEditing: false
+                onPressed: mouse => {
+                    root.forceActiveFocus()
+                    const point = mapToItem(scaled, mouse.x, mouse.y)
+                    pressX = point.x
+                    pressY = point.y
+                    startPanX = composition.screenPanX
+                    startPanY = composition.screenPanY
+                    editor.beginCoalescedEdit("screen.pan")
+                }
+                onPositionChanged: mouse => {
+                    if (!pressed) return
+                    const point = mapToItem(scaled, mouse.x, mouse.y)
+                    const k = Framing.screenPanPerPixel(composition.regionWidth, composition.regionHeight,
+                        composition.fitWidth, composition.fitHeight, composition.screenZoom)
+                    const x = Math.max(-1, Math.min(1, startPanX + (point.x - pressX) * k.x))
+                    const y = Math.max(-1, Math.min(1, startPanY - (point.y - pressY) * k.y))
+                    editor.setProjectValue("screen.pan.x", x, true)
+                    editor.setProjectValue("screen.pan.y", y, true)
+                }
+                onReleased: editor.endCoalescedEdit()
+                onCanceled: editor.endCoalescedEdit()
+                onWheel: wheel => {
+                    if ((wheel.modifiers & Qt.ControlModifier) === 0) {
+                        wheel.accepted = false
+                        return
+                    }
+                    if (!wheelEditing) {
+                        editor.beginCoalescedEdit("screen.zoom")
+                        wheelEditing = true
+                    }
+                    const step = Math.pow(1.1, wheel.angleDelta.y / 120)
+                    const zoom = Math.max(1, Math.min(4, composition.screenZoom * step))
+                    editor.setProjectValue("screen.zoom", zoom, true)
+                    wheelTimer.restart()
+                    wheel.accepted = true
+                }
+                Timer {
+                    id: wheelTimer
+                    interval: 400
+                    onTriggered: {
+                        if (screenFramingDrag.wheelEditing) {
+                            editor.endCoalescedEdit()
+                            screenFramingDrag.wheelEditing = false
+                        }
+                    }
+                }
+            }
+            MouseArea {
+                id: cameraFramingDrag
+                objectName: "cameraFramingDrag"
+                x: comp.layout.cameraX || 0
+                y: comp.layout.cameraY || 0
+                width: comp.layout.cameraWidth || 0
+                height: comp.layout.cameraHeight || 0
+                z: 1
+                enabled: composition.splitActive && composition.cameraShown
+                    && composition.cameraFull < 0.01
+                    && !editor.pickingZoomTarget && !root.cropMode
+                acceptedButtons: Qt.LeftButton
+                hoverEnabled: true
+                cursorShape: pressed ? Qt.ClosedHandCursor : Qt.OpenHandCursor
+                property real pressX: 0
+                property real pressY: 0
+                property real startPanX: 0
+                property real startPanY: 0
+                property bool wheelEditing: false
+                onPressed: mouse => {
+                    root.forceActiveFocus()
+                    const point = mapToItem(scaled, mouse.x, mouse.y)
+                    pressX = point.x
+                    pressY = point.y
+                    startPanX = composition.cameraSplitPanX
+                    startPanY = composition.cameraSplitPanY
+                    editor.beginCoalescedEdit("camera.splitPan")
+                }
+                onPositionChanged: mouse => {
+                    if (!pressed) return
+                    const point = mapToItem(scaled, mouse.x, mouse.y)
+                    const k = Framing.cameraPanPerPixel(width, height, composition.cameraSourceWidth,
+                        composition.cameraSourceHeight, composition.cameraRotation,
+                        composition.cameraSplitZoom)
+                    const x = Math.max(-1, Math.min(1, startPanX + (point.x - pressX) * k.x))
+                    const y = Math.max(-1, Math.min(1, startPanY - (point.y - pressY) * k.y))
+                    editor.setProjectValue("camera.splitPan.x", x, true)
+                    editor.setProjectValue("camera.splitPan.y", y, true)
+                }
+                onReleased: editor.endCoalescedEdit()
+                onCanceled: editor.endCoalescedEdit()
+                onWheel: wheel => {
+                    if ((wheel.modifiers & Qt.ControlModifier) === 0) {
+                        wheel.accepted = false
+                        return
+                    }
+                    if (!wheelEditing) {
+                        editor.beginCoalescedEdit("camera.splitZoom")
+                        wheelEditing = true
+                    }
+                    const step = Math.pow(1.1, wheel.angleDelta.y / 120)
+                    const zoom = Math.max(1, Math.min(3, composition.cameraSplitZoom * step))
+                    editor.setProjectValue("camera.splitZoom", zoom, true)
+                    cameraWheelTimer.restart()
+                    wheel.accepted = true
+                }
+                Timer {
+                    id: cameraWheelTimer
+                    interval: 400
+                    onTriggered: {
+                        if (cameraFramingDrag.wheelEditing) {
+                            editor.endCoalescedEdit()
+                            cameraFramingDrag.wheelEditing = false
+                        }
+                    }
                 }
             }
             Rectangle {
