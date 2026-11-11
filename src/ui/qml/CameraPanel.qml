@@ -70,6 +70,28 @@ ColumnLayout {
         }
 
         ColumnLayout {
+            visible: editor.activeCameraLayout === "split"
+            Layout.fillWidth: true
+            spacing: theme.space.panelGap
+
+            PanelHeading { text: "Framing"; Layout.topMargin: 2 }
+            PanelSlider { objectName: "cameraFramingZoom"; Layout.fillWidth: true; label: "Zoom"; path: "camera.splitZoom"; from: 1; to: 3; value: root.camera.splitZoom === undefined ? 1 : root.camera.splitZoom; stepSize: .01; decimals: 2 }
+            PanelSlider { objectName: "cameraFramingHorizontal"; Layout.fillWidth: true; label: "Horizontal"; path: "camera.splitPan.x"; from: -1; to: 1; value: root.camera.splitPan ? root.camera.splitPan.x : 0; stepSize: .01; decimals: 2 }
+            PanelSlider { objectName: "cameraFramingVertical"; Layout.fillWidth: true; label: "Vertical"; path: "camera.splitPan.y"; from: -1; to: 1; value: root.camera.splitPan ? root.camera.splitPan.y : 0; stepSize: .01; decimals: 2 }
+            EditorButton {
+                objectName: "cameraFramingReset"
+                text: "Reset framing"
+                onClicked: {
+                    editor.beginCoalescedEdit("camera.framing")
+                    editor.setProjectValue("camera.splitZoom", 1, true)
+                    editor.setProjectValue("camera.splitPan.x", 0, true)
+                    editor.setProjectValue("camera.splitPan.y", 0, true)
+                    editor.endCoalescedEdit()
+                }
+            }
+        }
+
+        ColumnLayout {
             visible: editor.activeCameraLayout === "bubble"
             Layout.fillWidth: true
             spacing: theme.space.panelGap

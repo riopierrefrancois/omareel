@@ -1964,6 +1964,72 @@ private slots:
         QTRY_COMPARE(editor.activeCameraLayout(), QStringLiteral("bubble"));
     }
 
+    void cameraPanelFramingControls()
+    {
+        Editor editor(cameraBundle(QStringLiteral("panel-framing.omareel")));
+        QVERIFY2(editor.isValid(), qPrintable(editor.errorString()));
+        QVERIFY(editor.hasCamera());
+        editor.setProjectValue(QStringLiteral("aspect"), QStringLiteral("9:16"));
+        QCOMPARE(editor.activeCameraLayout(), QStringLiteral("split"));
+
+        Theme theme;
+        QQmlEngine engine;
+        engine.rootContext()->setContextProperty(QStringLiteral("editor"), &editor);
+        engine.rootContext()->setContextProperty(QStringLiteral("theme"), &theme);
+        QQmlComponent component(&engine);
+        component.setData(R"(
+            import QtQuick
+            import QtQuick.Window
+            import Omareel
+            Window {
+                width: 284; height: 900; visible: true
+                CameraPanel { anchors.fill: parent }
+            })", QUrl());
+        QVERIFY2(component.isReady(), qPrintable(component.errorString()));
+        std::unique_ptr<QObject> object(component.create());
+        auto *window = qobject_cast<QQuickWindow *>(object.get());
+        QVERIFY(window);
+        QVERIFY(QTest::qWaitForWindowExposed(window));
+
+        const auto findItem = [](QQuickItem *parent, const QString &name) {
+            std::function<QQuickItem *(QQuickItem *)> visit = [&](QQuickItem *item) -> QQuickItem * {
+                if (item->objectName() == name) return item;
+                for (QQuickItem *child : item->childItems())
+                    if (QQuickItem *match = visit(child)) return match;
+                return nullptr;
+            };
+            return visit(parent);
+        };
+        const auto camera = [&editor] {
+            return editor.projectMap().value(QStringLiteral("camera")).toMap();
+        };
+        auto *zoom = findItem(window->contentItem(), QStringLiteral("cameraFramingZoom"));
+        QTRY_VERIFY(zoom);
+        QTRY_VERIFY(zoom->isVisible());
+
+        editor.setProjectValue(QStringLiteral("camera.splitZoom"), 2.0);
+        QTRY_COMPARE(camera().value(QStringLiteral("splitZoom")).toDouble(), 2.0);
+        editor.undo();
+        QTRY_VERIFY(!camera().contains(QStringLiteral("splitZoom")));
+
+        // Reset both framing values in one edit, which one undo brings back.
+        editor.setProjectValue(QStringLiteral("camera.splitZoom"), 2.0);
+        editor.setProjectValue(QStringLiteral("camera.splitPan.x"), 0.5);
+        auto *reset = findItem(window->contentItem(), QStringLiteral("cameraFramingReset"));
+        QTRY_VERIFY(reset);
+        QVERIFY(QMetaObject::invokeMethod(reset, "clicked"));
+        QTRY_VERIFY(!camera().contains(QStringLiteral("splitZoom")));
+        QVERIFY(!camera().contains(QStringLiteral("splitPan")));
+        editor.undo();
+        QTRY_COMPARE(camera().value(QStringLiteral("splitZoom")).toDouble(), 2.0);
+        QCOMPARE(camera().value(QStringLiteral("splitPan")).toMap()
+                     .value(QStringLiteral("x")).toDouble(), 0.5);
+
+        // Bubble hides the framing controls.
+        editor.setProjectValue(QStringLiteral("camera.layout"), QStringLiteral("bubble"));
+        QTRY_VERIFY(!zoom->isVisible());
+    }
+
 private:
     bool makeVideo(const QString &path, const QString &source, double seconds)
     {
