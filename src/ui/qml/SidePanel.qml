@@ -16,7 +16,7 @@ Rectangle {
         {name:"Cursor", meta:"Pointer, clicks, and motion", icon:"mouse-pointer-2.svg"},
         {name:"Zoom", meta:"Focus and camera motion", icon:"zoom-in.svg"},
         {name:"Clip", meta:"Trim and speed", icon:"film.svg"},
-        {name:"Camera", meta:"Webcam bubble", icon:"camera.svg"},
+        {name:"Camera", meta:"Webcam & layout", icon:"camera.svg"},
         {name:"Keystrokes", meta:"Shortcut overlay", icon:"keyboard.svg"},
         {name:"Audio", meta:"Tracks and volume", icon:"volume-2.svg"}
     ]
