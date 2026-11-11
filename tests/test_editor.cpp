@@ -676,6 +676,53 @@ private slots:
         QVERIFY(qAbs(reopened.duration() - 1.1) < .03);
     }
 
+    void timelineResizeHandleChangesTheRows()
+    {
+        QFile::remove(QDir(m_bundle).filePath(QStringLiteral("project.json")));
+        Editor editor(m_bundle);
+        QVERIFY2(editor.isValid(), qPrintable(editor.errorString()));
+        Theme theme;
+        QQmlEngine engine;
+        engine.rootContext()->setContextProperty(QStringLiteral("editor"), &editor);
+        engine.rootContext()->setContextProperty(QStringLiteral("comp"), &editor);
+        engine.rootContext()->setContextProperty(QStringLiteral("theme"), &theme);
+        QQmlComponent component(&engine);
+        component.setData(R"(
+            import Omareel
+            Main { width: 1200; height: 800; visible: true })", QUrl());
+        QVERIFY2(component.isReady(), qPrintable(component.errorString()));
+        std::unique_ptr<QObject> object(component.create());
+        auto *window = qobject_cast<QQuickWindow *>(object.get());
+        QVERIFY(window);
+        QVERIFY(QTest::qWaitForWindowExposed(window));
+        auto *timeline = window->findChild<QQuickItem *>(QStringLiteral("editorTimeline"));
+        auto *handle = window->findChild<QQuickItem *>(QStringLiteral("timelineResizeHandle"));
+        QTRY_VERIFY(timeline);
+        QTRY_VERIFY(handle);
+
+        // The saved height may come from an earlier run; reset it to the minimum first.
+        const auto handleCentre = [handle] {
+            return handle->mapToScene(QPointF(handle->width() / 2, handle->height() / 2)).toPoint();
+        };
+        QTest::mouseDClick(window, Qt::LeftButton, Qt::NoModifier, handleCentre());
+        const double minimum = timeline->property("implicitHeight").toDouble();
+        QTRY_COMPARE(timeline->height(), minimum);
+        QCOMPARE(timeline->property("rowHeight").toDouble(), 48.0);
+
+        // Dragging the top edge up makes the timeline and its rows taller.
+        const QPoint start = handleCentre();
+        QTest::mousePress(window, Qt::LeftButton, Qt::NoModifier, start);
+        QTest::mouseMove(window, start - QPoint(0, 60), 20);
+        QTest::mouseRelease(window, Qt::LeftButton, Qt::NoModifier, start - QPoint(0, 60));
+        QTRY_VERIFY(timeline->height() > minimum + 40);
+        QVERIFY(timeline->property("rowHeight").toDouble() > 48);
+
+        // Double-clicking the handle resets it to the minimum.
+        QTest::mouseDClick(window, Qt::LeftButton, Qt::NoModifier, handleCentre());
+        QTRY_COMPARE(timeline->height(), minimum);
+        QCOMPARE(timeline->property("rowHeight").toDouble(), 48.0);
+    }
+
     void videoThumbnailsFollowSourceTimes()
     {
         const QString thumbnailBundle = m_temporary.filePath(QStringLiteral("thumbnails.omareel"));
