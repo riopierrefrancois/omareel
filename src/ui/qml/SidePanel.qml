@@ -44,20 +44,31 @@ Rectangle {
         return root.sections[index].meta
     }
 
+    function sectionIndex(name) {
+        for (let i = 0; i < root.sections.length; ++i)
+            if (root.sections[i].name === name) return i
+        return -1
+    }
+
+    function showSection(name) {
+        const index = sectionIndex(name)
+        if (index >= 0) root.section = index
+    }
+
     function setBackgroundExpanded(value) {
-        root.section = 0
+        root.showSection("Background")
         Qt.callLater(function() {
             if (panelLoader.item) panelLoader.item.showAllWallpapers = value
         })
     }
     function setGradientExpanded(value) {
-        root.section = 0
+        root.showSection("Background")
         Qt.callLater(function() {
             if (panelLoader.item) panelLoader.item.showAllGradients = value
         })
     }
     function setBackgroundHoverProof(index) {
-        root.section = 0
+        root.showSection("Background")
         Qt.callLater(function() {
             if (panelLoader.item) panelLoader.item.proofHoveredIndex = index
         })
@@ -200,13 +211,18 @@ Rectangle {
                             y: 16
                             width: inspectorPanel.width - theme.space.panelPadding * 2
                             height: item ? item.implicitHeight : 0
-                            sourceComponent: root.displayedSection === 0 ? backgroundPanel
-                                : root.displayedSection === 1 ? shapePanel
-                                : root.displayedSection === 2 ? cursorPanel
-                                : root.displayedSection === 3 ? zoomPanel
-                                : root.displayedSection === 4 ? clipPanel
-                                : root.displayedSection === 5 ? cameraPanel
-                                : root.displayedSection === 6 ? keystrokesPanel : audioPanel
+                            sourceComponent: {
+                                switch (root.sections[root.displayedSection].name) {
+                                case "Background": return backgroundPanel
+                                case "Shape": return shapePanel
+                                case "Cursor": return cursorPanel
+                                case "Zoom": return zoomPanel
+                                case "Clip": return clipPanel
+                                case "Camera": return cameraPanel
+                                case "Keystrokes": return keystrokesPanel
+                                default: return audioPanel
+                                }
+                            }
                         }
                     }
                 }
@@ -226,8 +242,8 @@ Rectangle {
     Connections {
         target: editor
         function onSelectionChanged() {
-            if (editor.selectedZoomId) root.section = 3
-            else if (editor.selectedClipId) root.section = 4
+            if (editor.selectedZoomId) root.showSection("Zoom")
+            else if (editor.selectedClipId) root.showSection("Clip")
         }
     }
 }

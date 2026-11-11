@@ -2417,6 +2417,46 @@ private slots:
         QVERIFY(QFileInfo::exists(bundle));
     }
 
+    void sidePanelShowsSectionsByName()
+    {
+        Editor editor(cameraBundle(QStringLiteral("side-panel.omareel")));
+        QVERIFY2(editor.isValid(), qPrintable(editor.errorString()));
+        Theme theme;
+        QQmlEngine engine;
+        engine.rootContext()->setContextProperty(QStringLiteral("editor"), &editor);
+        engine.rootContext()->setContextProperty(QStringLiteral("theme"), &theme);
+        QQmlComponent component(&engine);
+        component.setData(R"(
+            import QtQuick
+            import QtQuick.Window
+            import Omareel
+            Window {
+                width: 800; height: 900; visible: true
+                SidePanel { anchors.fill: parent }
+            })", QUrl());
+        QVERIFY2(component.isReady(), qPrintable(component.errorString()));
+        std::unique_ptr<QObject> object(component.create());
+        auto *window = qobject_cast<QQuickWindow *>(object.get());
+        QVERIFY(window);
+        QVERIFY(QTest::qWaitForWindowExposed(window));
+        auto *panel = window->findChild<QQuickItem *>(QStringLiteral("sidePanel"));
+        QTRY_VERIFY(panel);
+
+        QVariant index;
+        QVERIFY(QMetaObject::invokeMethod(panel, "sectionIndex", Q_RETURN_ARG(QVariant, index),
+            Q_ARG(QVariant, QVariant(QStringLiteral("Camera")))));
+        QVERIFY(index.toInt() >= 0);
+        QVERIFY(QMetaObject::invokeMethod(panel, "showSection",
+            Q_ARG(QVariant, QVariant(QStringLiteral("Camera")))));
+        QCOMPARE(panel->property("section").toInt(), index.toInt());
+        QTRY_VERIFY(window->findChild<QQuickItem *>(QStringLiteral("cameraFullFrameGroup")));
+
+        const int before = panel->property("section").toInt();
+        QVERIFY(QMetaObject::invokeMethod(panel, "showSection",
+            Q_ARG(QVariant, QVariant(QStringLiteral("Nope")))));
+        QCOMPARE(panel->property("section").toInt(), before);
+    }
+
 private:
     bool makeVideo(const QString &path, const QString &source, double seconds)
     {
