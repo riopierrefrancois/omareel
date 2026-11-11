@@ -330,6 +330,12 @@ impl Project {
         let layout = camera.value("layout").to_string_or("bubble");
         p.camera.layout = if ["auto", "bubble", "split"].contains(&layout.as_str()) { layout } else { "bubble".into() };
         p.camera.split_ratio = cpp::clamp(camera.value("splitRatio").to_double(0.6), 0.5, 0.8);
+        p.camera.split_zoom = cpp::clamp(camera.value("splitZoom").to_double(1.0), 1.0, 3.0);
+        let split_pan = camera.value("splitPan").to_object();
+        p.camera.split_pan = PointF::new(
+            cpp::clamp(split_pan.value("x").to_double(0.0), -1.0, 1.0),
+            cpp::clamp(split_pan.value("y").to_double(0.0), -1.0, 1.0),
+        );
         p.camera.position = camera.value("position").to_string_or("bottom-right");
         p.camera.size = camera.value("size").to_double(0.25);
         let camera_shape = camera.value("shape").to_string_or("round");
@@ -501,6 +507,12 @@ impl Project {
         }
         if cam.split_ratio != 0.6 {
             camera.insert("splitRatio", cam.split_ratio);
+        }
+        if cam.split_zoom != 1.0 {
+            camera.insert("splitZoom", cam.split_zoom);
+        }
+        if cam.split_pan.x != 0.0 || cam.split_pan.y != 0.0 {
+            camera.insert("splitPan", obj([("x", cam.split_pan.x.into()), ("y", cam.split_pan.y.into())]));
         }
         Object::from_iter([
             ("version", Value::from(self.version)),

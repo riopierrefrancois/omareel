@@ -174,6 +174,48 @@ fn camera_layout_round_trips() {
 }
 
 #[test]
+fn camera_split_framing_loads_and_saves() {
+    let load = |json: &str| Project::from_json(&object(json));
+    let camera = |project: &Project| project.to_json().value("camera").to_object();
+
+    // Absent keys mean the cover crop and no pan, and stay out of the written project.
+    let plain = load("{}");
+    assert!(qcompare(plain.camera.split_zoom, 1.0));
+    assert!(qcompare_point(plain.camera.split_pan, PointF::new(0.0, 0.0)));
+    assert!(!camera(&plain).contains("splitZoom"));
+    assert!(!camera(&plain).contains("splitPan"));
+
+    assert!(qcompare(load(r#"{"camera": {"splitZoom": 2}}"#).camera.split_zoom, 2.0));
+    assert!(qcompare(load(r#"{"camera": {"splitZoom": 0.5}}"#).camera.split_zoom, 1.0));
+    assert!(qcompare(load(r#"{"camera": {"splitZoom": 9}}"#).camera.split_zoom, 3.0));
+
+    let pan = load(r#"{"camera": {"splitPan": {"x": 0.4, "y": -0.2}}}"#).camera.split_pan;
+    assert!(qcompare_point(pan, PointF::new(0.4, -0.2)));
+    let clamped = load(r#"{"camera": {"splitPan": {"x": 3, "y": -3}}}"#).camera.split_pan;
+    assert!(qcompare_point(clamped, PointF::new(1.0, -1.0)));
+    let x_only = load(r#"{"camera": {"splitPan": {"x": 0.4}}}"#).camera.split_pan;
+    assert!(qcompare_point(x_only, PointF::new(0.4, 0.0)));
+
+    let mut framed = Project::default();
+    framed.camera.split_zoom = 1.5;
+    framed.camera.split_pan = PointF::new(0.4, 0.0);
+    let json = framed.to_json();
+    let written = json.value("camera").to_object();
+    assert!(qcompare(written.value("splitZoom").to_double(0.0), 1.5));
+    let written_pan = written.value("splitPan").to_object();
+    assert!(qcompare(written_pan.value("x").to_double(0.0), 0.4));
+    assert!(qcompare(written_pan.value("y").to_double(0.0), 0.0));
+    let loaded = Project::from_json(&json);
+    assert!(qcompare(loaded.camera.split_zoom, 1.5));
+    assert!(qcompare_point(loaded.camera.split_pan, PointF::new(0.4, 0.0)));
+
+    // A centred pan is the missing value even when the zoom is written.
+    framed.camera.split_zoom = 2.0;
+    framed.camera.split_pan = PointF::new(0.0, 0.0);
+    assert!(!camera(&framed).contains("splitPan"));
+}
+
+#[test]
 fn inserted_videos_stay_inside_the_bundle() {
     assert_eq!(sanitized_media_path("media/demo.mp4"), "media/demo.mp4");
     assert_eq!(sanitized_media_path("media/./demo.mp4"), "media/demo.mp4");
