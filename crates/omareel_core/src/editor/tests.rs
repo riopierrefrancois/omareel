@@ -853,6 +853,23 @@ fn a_changed_aspect_or_camera_switch_picks_the_layout_again() {
 }
 
 #[test]
+fn preview_layout_carries_the_split() {
+    let world = World::new("editor-preview-split");
+    let mut qt = world.open(&world.camera_bundle("preview-split.omareel"));
+    qt.run(|d| d.set_project_value("aspect", "9:16".into(), false));
+    let split = qt.document.preview_layout();
+    assert!(split.split_active);
+    assert!(split.split.camera_rect.height > 0.0);
+
+    qt.run(|d| d.set_project_value("aspect", "16:9".into(), false));
+    let bubble = qt.document.preview_layout();
+    assert!(!bubble.split_active);
+    assert_eq!(bubble.split.screen_region.width, f64::from(qt.document.output_width()));
+    assert_eq!(bubble.split.camera_rect.width, 0.0);
+    assert_eq!(bubble.split.camera_rect.height, 0.0);
+}
+
+#[test]
 fn camera_timing_and_status() {
     let world = World::new("editor-camera-status");
     let bundle = world.camera_bundle("status.omareel");

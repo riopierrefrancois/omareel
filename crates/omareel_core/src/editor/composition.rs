@@ -12,7 +12,7 @@ use crate::camera_timeline::map_camera_time;
 use crate::compat::cpp;
 use crate::keystroke_track::KeystrokePill;
 use crate::motion_track::{MotionSample, RippleSample};
-use crate::split_layout;
+use crate::split_layout::{self, SplitGeometry};
 
 /// `zoom`: `{scale, cx, cy, velocity}`, all doubles.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -23,11 +23,15 @@ pub struct PreviewZoom {
     pub velocity: f64,
 }
 
-/// `layout`: `{cameraFull, bubble}`, doubles.
+/// `layout`: `{cameraFull, bubble}`, doubles; Split also says where the screen and camera go
+/// in output pixels. When Split is not drawn the screen region is the whole canvas and the
+/// camera rect is zero.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct PreviewLayout {
     pub camera_full: f64,
     pub bubble: f64,
+    pub split_active: bool,
+    pub split: SplitGeometry,
 }
 
 /// `media`: `{active, ready, fit, width, height, missing}`; `width` and `height` are `int`s.
@@ -89,7 +93,15 @@ impl Document {
 
     pub fn preview_layout(&self) -> PreviewLayout {
         let layout = self.layout_at(self.output_position);
-        PreviewLayout { camera_full: layout.camera_full, bubble: layout.bubble }
+        let width = f64::from(self.output_width());
+        let height = f64::from(self.output_height());
+        let split_active = self.active_camera_layout() == "split";
+        let split = if split_active {
+            split_layout::split_geometry(width, height, self.project.camera.split_ratio)
+        } else {
+            split_layout::no_split(width, height)
+        };
+        PreviewLayout { camera_full: layout.camera_full, bubble: layout.bubble, split_active, split }
     }
 
     /// `previewMedia()`: `ready` needs the media player's frame (`m_playback.mediaFrameReady()`)

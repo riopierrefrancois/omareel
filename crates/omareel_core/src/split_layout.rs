@@ -66,6 +66,15 @@ pub fn split_camera_decode_scale(geometry: &SplitGeometry, camera_display_width:
     cpp::clamp(scale, 0.01, 1.0)
 }
 
+/// Split is not drawn: the screen gets the whole canvas and the camera has no part of it.
+pub fn no_split(width: f64, height: f64) -> SplitGeometry {
+    SplitGeometry {
+        side_by_side: false,
+        screen_region: Rect { x: 0.0, y: 0.0, width, height },
+        camera_rect: Rect::default(),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -123,6 +132,18 @@ mod tests {
         // A 1920x1080 camera turned 90 degrees already fills the band.
         assert!((split_camera_decode_scale(&stacked, 1080.0, 1920.0) - 1.0).abs() < 1e-12);
         assert!((split_camera_decode_scale(&stacked, 0.0, 0.0) - 1.0).abs() < 1e-12);
+    }
+
+    #[test]
+    fn no_split_gives_the_screen_the_whole_canvas() {
+        assert_eq!(
+            no_split(1920.0, 1080.0),
+            SplitGeometry {
+                side_by_side: false,
+                screen_region: Rect { x: 0.0, y: 0.0, width: 1920.0, height: 1080.0 },
+                camera_rect: Rect::default(),
+            }
+        );
     }
 
     #[test]
