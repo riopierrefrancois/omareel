@@ -101,6 +101,7 @@ set_source_files_properties(
     src/ui/qml/MediaLayer.qml
     src/ui/qml/KeystrokeOverlay.qml
     src/ui/qml/Framing.js
+    src/ui/qml/Aspects.js
     src/ui/qml/Main.qml
     src/ui/qml/TopBar.qml
     src/ui/qml/PreviewPane.qml
@@ -138,6 +139,7 @@ set_source_files_properties(src/ui/qml/RoundedFrame.qml PROPERTIES QT_RESOURCE_A
 set_source_files_properties(src/ui/qml/CursorOverlay.qml PROPERTIES QT_RESOURCE_ALIAS "CursorOverlay.qml")
 set_source_files_properties(src/ui/qml/CameraOverlay.qml PROPERTIES QT_RESOURCE_ALIAS "CameraOverlay.qml")
 set_source_files_properties(src/ui/qml/Framing.js PROPERTIES QT_RESOURCE_ALIAS "Framing.js")
+set_source_files_properties(src/ui/qml/Aspects.js PROPERTIES QT_RESOURCE_ALIAS "Aspects.js")
 set_source_files_properties(src/ui/qml/BlurredBackdrop.qml PROPERTIES QT_RESOURCE_ALIAS "BlurredBackdrop.qml")
 set_source_files_properties(src/ui/qml/MediaLayer.qml PROPERTIES QT_RESOURCE_ALIAS "MediaLayer.qml")
 foreach(qml_name IN ITEMS Main TopBar PreviewPane BottomBar SidePanel PanelSlider PanelLabel PanelHeading PanelValue IconToolButton EditorButton EditorSlider EditorSwitch EditorComboBox BackgroundPanel ShapePanel CursorPanel ZoomPanel AudioPanel ClipPanel CameraPanel KeystrokesPanel ExportDialog InsertClipDialog Timeline ClipTrack ZoomTrack Launcher RecordingBar)
@@ -161,6 +163,7 @@ qt_add_qml_module(omareel_render
         src/ui/qml/MediaLayer.qml
         src/ui/qml/KeystrokeOverlay.qml
         src/ui/qml/Framing.js
+        src/ui/qml/Aspects.js
         src/ui/qml/Main.qml
         src/ui/qml/TopBar.qml
         src/ui/qml/PreviewPane.qml

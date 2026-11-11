@@ -3,6 +3,7 @@ import QtQuick.Controls
 import QtQuick.Controls.impl
 import QtQuick.Layouts
 import Omareel.Ui
+import "Aspects.js" as Aspects
 
 Rectangle {
     id: root
@@ -13,12 +14,7 @@ Rectangle {
     property bool cropMode: false
     readonly property bool compact: width < 1100
     readonly property bool narrow: width < 900
-    readonly property var aspects: [
-        {text:"Auto", value:"auto"}, {text:"Wide 16:9", value:"16:9"},
-        {text:"Vertical 9:16", value:"9:16"}, {text:"Square 1:1", value:"1:1"},
-        {text:"Portrait 4:5", value:"4:5"}, {text:"Classic 4:3", value:"4:3"},
-        {text:"Tall 3:4", value:"3:4"}
-    ]
+    readonly property var aspects: Aspects.list
     readonly property var shortcuts: [
         {key:"Space", action:"Play / pause"}, {key:"← →", action:"Step one frame"},
         {key:"Shift ← →", action:"Jump one second"}, {key:"S", action:"Split at playhead"},
