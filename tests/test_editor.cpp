@@ -1349,6 +1349,68 @@ private slots:
         QVERIFY(two.value("y").toDouble() > 0);
     }
 
+    void framingScreenMath()
+    {
+        QQmlEngine engine;
+        QQmlComponent component(&engine);
+        component.setData(R"(
+            import QtQuick
+            import "qrc:/qt/qml/Omareel/Framing.js" as F
+            QtObject {
+                function frame(a, b, c, d, e, f, g) { return F.screenFrame(a, b, c, d, e, f, g) }
+                function ppp(a, b, c, d, e) { return F.screenPanPerPixel(a, b, c, d, e) }
+            })", QUrl());
+        QVERIFY2(component.isReady(), qPrintable(component.errorString()));
+        std::unique_ptr<QObject> object(component.create());
+        QVERIFY(object);
+
+        const auto frame = [&object](double regionW, double regionH, double fitW, double fitH,
+                                     double zoom, double panX, double panY) {
+            QVariant result;
+            const bool ok = QMetaObject::invokeMethod(object.get(), "frame", Q_RETURN_ARG(QVariant, result),
+                Q_ARG(QVariant, regionW), Q_ARG(QVariant, regionH), Q_ARG(QVariant, fitW),
+                Q_ARG(QVariant, fitH), Q_ARG(QVariant, zoom), Q_ARG(QVariant, panX),
+                Q_ARG(QVariant, panY));
+            return ok ? result.toMap() : QVariantMap();
+        };
+        const auto ppp = [&object](double regionW, double regionH, double fitW, double fitH,
+                                   double zoom) {
+            QVariant result;
+            const bool ok = QMetaObject::invokeMethod(object.get(), "ppp", Q_RETURN_ARG(QVariant, result),
+                Q_ARG(QVariant, regionW), Q_ARG(QVariant, regionH), Q_ARG(QVariant, fitW),
+                Q_ARG(QVariant, fitH), Q_ARG(QVariant, zoom));
+            return ok ? result.toMap() : QVariantMap();
+        };
+        const auto near = [](double a, double b) { return qAbs(a - b) < 1e-9; };
+        const auto matches = [&near](const QVariantMap &rect, double x, double y, double w, double h) {
+            return near(rect.value("x").toDouble(), x) && near(rect.value("y").toDouble(), y)
+                && near(rect.value("width").toDouble(), w) && near(rect.value("height").toDouble(), h);
+        };
+
+        // The fitted frame is centred; a pan touches each side of the region.
+        QVERIFY(matches(frame(1000, 600, 800, 450, 1, 0, 0), 100, 75, 800, 450));
+        QVERIFY(near(frame(1000, 600, 800, 450, 1, 1, 0).value("x").toDouble(), 200));
+        QVERIFY(near(frame(1000, 600, 800, 450, 1, 0, 1).value("y").toDouble(), 0));
+
+        // Zoom 2 grows around the centre; the pans reach the picture's edges.
+        QVERIFY(matches(frame(1000, 600, 800, 450, 2, 0, 0), -300, -150, 1600, 900));
+        QVERIFY(near(frame(1000, 600, 800, 450, 2, 1, 0).value("x").toDouble(), 0));
+        const QVariantMap left = frame(1000, 600, 800, 450, 2, -1, 0);
+        QVERIFY(near(left.value("x").toDouble() + left.value("width").toDouble(), 1000));
+
+        // Inputs are clamped: zoom 9 behaves as 4 and pan 3 as 1.
+        const QVariantMap clamped = frame(1000, 600, 800, 450, 4, 1, 1);
+        QVERIFY(matches(frame(1000, 600, 800, 450, 9, 3, 3),
+                        clamped.value("x").toDouble(), clamped.value("y").toDouble(),
+                        clamped.value("width").toDouble(), clamped.value("height").toDouble()));
+
+        // Pan per pixel is zero where the fit exactly fills the region.
+        QVERIFY(near(ppp(800, 450, 800, 450, 1).value("x").toDouble(), 0));
+        QVERIFY(near(ppp(800, 450, 800, 450, 1).value("y").toDouble(), 0));
+        QVERIFY(ppp(1000, 600, 800, 450, 1).value("x").toDouble() > 0);
+        QVERIFY(ppp(1000, 600, 800, 450, 1).value("y").toDouble() > 0);
+    }
+
     void newProjectUsesCapturedCameraOrientation()
     {
         const QString bundle = m_temporary.filePath(QStringLiteral("camera-default.omareel"));
