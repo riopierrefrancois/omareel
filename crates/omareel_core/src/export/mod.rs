@@ -33,6 +33,7 @@ use crate::media_probe::{self, VideoInfo};
 use crate::motion_track::MotionTrack;
 use crate::omarchy_paths;
 use crate::project::{Clip, Project};
+use crate::split_layout;
 use crate::zoom_timeline;
 use composition::{CompositionState, Sources};
 use decoder::FfmpegDecoder;
@@ -360,9 +361,29 @@ impl ExportJob {
         let camera_decode_scale = if camera_enabled {
             cpp::clamp(
                 cpp::max(
-                    f64::from(height) * project.camera.size * 1.5 / camera_display_height,
-                    if camera_full_frame {
-                        cpp::max(f64::from(width) / camera_display_width, f64::from(height) / camera_display_height)
+                    cpp::max(
+                        f64::from(height) * project.camera.size * 1.5 / camera_display_height,
+                        if camera_full_frame {
+                            cpp::max(f64::from(width) / camera_display_width, f64::from(height) / camera_display_height)
+                        } else {
+                            0.0
+                        },
+                    ),
+                    if split_layout::active_camera_layout(
+                        &project,
+                        camera_media.width > 0,
+                        f64::from(width) / cpp::max(1.0, f64::from(height)),
+                    ) == "split"
+                    {
+                        split_layout::split_camera_decode_scale(
+                            &split_layout::split_geometry(
+                                f64::from(width),
+                                f64::from(height),
+                                project.camera.split_ratio,
+                            ),
+                            camera_display_width,
+                            camera_display_height,
+                        )
                     } else {
                         0.0
                     },
