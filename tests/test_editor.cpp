@@ -2479,6 +2479,57 @@ private slots:
         QTRY_VERIFY(window->findChild<QQuickItem *>(QStringLiteral("layoutAspectMenu")));
     }
 
+    void cameraPanelIsLookOnly()
+    {
+        Editor editor(cameraBundle(QStringLiteral("panel-look.omareel")));
+        QVERIFY2(editor.isValid(), qPrintable(editor.errorString()));
+        QVERIFY(editor.hasCamera());
+        editor.setProjectValue(QStringLiteral("aspect"), QStringLiteral("9:16"));
+        QCOMPARE(editor.activeCameraLayout(), QStringLiteral("split"));
+
+        Theme theme;
+        QQmlEngine engine;
+        engine.rootContext()->setContextProperty(QStringLiteral("editor"), &editor);
+        engine.rootContext()->setContextProperty(QStringLiteral("theme"), &theme);
+        QQmlComponent component(&engine);
+        component.setData(R"(
+            import QtQuick
+            import QtQuick.Window
+            import Omareel
+            Window {
+                width: 320; height: 900; visible: true
+                CameraPanel { anchors.fill: parent }
+            })", QUrl());
+        QVERIFY2(component.isReady(), qPrintable(component.errorString()));
+        std::unique_ptr<QObject> object(component.create());
+        auto *window = qobject_cast<QQuickWindow *>(object.get());
+        QVERIFY(window);
+        QVERIFY(QTest::qWaitForWindowExposed(window));
+
+        const auto findItem = [](QQuickItem *parent, const QString &name) {
+            std::function<QQuickItem *(QQuickItem *)> visit = [&](QQuickItem *item) -> QQuickItem * {
+                if (item->objectName() == name) return item;
+                for (QQuickItem *child : item->childItems())
+                    if (QQuickItem *match = visit(child)) return match;
+                return nullptr;
+            };
+            return visit(parent);
+        };
+        QVERIFY(!findItem(window->contentItem(), QStringLiteral("cameraLayoutGroup")));
+        QVERIFY(!findItem(window->contentItem(), QStringLiteral("cameraSplitRatioGroup")));
+        QVERIFY(!findItem(window->contentItem(), QStringLiteral("cameraFramingZoom")));
+
+        auto *style = findItem(window->contentItem(), QStringLiteral("cameraBubbleStyle"));
+        auto *note = findItem(window->contentItem(), QStringLiteral("cameraBubbleStyleNote"));
+        QTRY_VERIFY(style);
+        QVERIFY(!style->property("enabled").toBool());
+        QTRY_VERIFY(note);
+        QVERIFY(note->isVisible());
+
+        editor.setProjectValue(QStringLiteral("camera.layout"), QStringLiteral("bubble"));
+        QTRY_VERIFY(style->property("enabled").toBool());
+    }
+
 private:
     bool makeVideo(const QString &path, const QString &source, double seconds)
     {

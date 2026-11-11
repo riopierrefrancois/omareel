@@ -13,7 +13,7 @@ ColumnLayout {
         visible: !editor.hasCamera
         iconSource: "qrc:/omareel/assets/icons/lucide/video-off.svg"
         title: "No webcam in this recording"
-        hint: "Turn on Webcam in the launcher before recording to add a camera bubble."
+        hint: "Turn on Camera in the launcher before recording to add a camera."
     }
     Label {
         visible: editor.hasCamera && editor.cameraStatus !== ""
@@ -26,7 +26,7 @@ ColumnLayout {
     EditorSwitch {
         visible: editor.hasCamera
         text: "Show camera"
-        description: "Overlay the webcam on the recording"
+        description: "Show the camera in the video"
         enabled: editor.hasCamera
         checked: editor.hasCamera && root.camera.enabled
         onToggled: editor.setProjectValue("camera.enabled", checked)
@@ -39,10 +39,23 @@ ColumnLayout {
         opacity: enabled ? 1 : .42
         Behavior on opacity { NumberAnimation { duration: 160 } }
 
+        PanelHeading { text: "Bubble style" }
+        Label {
+            objectName: "cameraBubbleStyleNote"
+            visible: editor.activeCameraLayout === "split"
+            Layout.fillWidth: true
+            text: "Bubble style applies when Layout is Bubble."
+            color: theme.textMuted
+            font.pixelSize: theme.type.small
+            wrapMode: Text.WordWrap
+        }
         ColumnLayout {
-            visible: editor.activeCameraLayout === "bubble"
+            objectName: "cameraBubbleStyle"
             Layout.fillWidth: true
             spacing: theme.space.panelGap
+            enabled: editor.activeCameraLayout === "bubble"
+            opacity: enabled ? 1 : .42
+            Behavior on opacity { NumberAnimation { duration: 160 } }
 
             OmSettingRow {
                 label: "Shape"
@@ -101,7 +114,7 @@ ColumnLayout {
         }
         Label {
             Layout.fillWidth: true
-            text: "Clips with the Camera layout show the webcam full screen. Set a clip's layout in Clip."
+            text: "Clips set to Show: Camera fill the frame with the camera. Set it per clip in Clip."
             color: theme.textMuted
             font.pixelSize: theme.type.small
             wrapMode: Text.WordWrap
