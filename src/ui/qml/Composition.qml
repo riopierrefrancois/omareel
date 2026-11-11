@@ -20,16 +20,29 @@ Item {
     property real cursorRef: (comp.captureScale > 0 ? comp.captureScale : 1)
                              * videoWidth / Math.max(1, comp.sourceWidth * comp.project.crop.w)
     property bool noBackground: comp.project.background.type === "none"
-    property real pad: noBackground ? 0 : Math.min(width, height) * comp.project.frame.padding
-    property real availableWidth: width - 2 * pad
-    property real availableHeight: height - 2 * pad
+    readonly property bool splitActive: !!comp.layout.splitActive
+    // How far Split is shown: the bubble's value, so screen clips and camera clips ease out of it.
+    readonly property real splitAmount: splitActive && cameraShown && !mediaActive ? comp.layout.bubble : 0
+    readonly property real regionX: (comp.layout.screenX || 0) * splitAmount
+    readonly property real regionY: (comp.layout.screenY || 0) * splitAmount
+    readonly property real regionWidth: width + ((comp.layout.screenWidth || width) - width) * splitAmount
+    readonly property real regionHeight: height + ((comp.layout.screenHeight || height) - height) * splitAmount
+    // No background stretches the screen to the canvas, except in Split, which keeps its shape.
+    readonly property bool stretchScreen: noBackground && splitAmount <= 0
+    property real pad: noBackground ? 0 : Math.min(regionWidth, regionHeight) * comp.project.frame.padding
+    property real availableWidth: regionWidth - 2 * pad
+    property real availableHeight: regionHeight - 2 * pad
     property real borderWidth: !noBackground && comp.project.frame.border.enabled
                                ? comp.project.frame.border.width * ref : 0
     property real sourceAspect: (comp.sourceWidth * comp.project.crop.w) / Math.max(1, comp.sourceHeight * comp.project.crop.h)
-    property real videoWidth: noBackground ? width
+    property real videoWidth: stretchScreen ? regionWidth
         : Math.max(1, Math.min(availableWidth - 2 * borderWidth,
                               (availableHeight - 2 * borderWidth) * sourceAspect))
-    property real videoHeight: noBackground ? height : videoWidth / sourceAspect
+    property real videoHeight: stretchScreen ? regionHeight : videoWidth / sourceAspect
+    readonly property real frameX: regionX + (regionWidth - videoWidth) / 2
+    readonly property real frameY: regionY + (regionHeight - videoHeight) / 2
+    readonly property real frameWidth: videoWidth
+    readonly property real frameHeight: videoHeight
     readonly property bool cameraShown: comp.cameraAvailable && comp.cameraVisible
     // How far the current clip's layout has grown the camera to full frame.
     readonly property real cameraFull: cameraShown ? comp.layout.cameraFull : 0
@@ -49,45 +62,61 @@ Item {
         loadAsynchronously: composition.nativePreview
     }
 
-    Item {
-        id: stage
+    // With no background the export leaves uncovered pixels black; Split does the same.
+    Rectangle {
         anchors.fill: parent
+        color: "black"
+        visible: composition.noBackground && composition.splitAmount > 0
+    }
+
+    Item {
+        id: screenClip
+        x: composition.regionX
+        y: composition.regionY
+        width: composition.regionWidth
+        height: composition.regionHeight
+        clip: composition.splitAmount > 0
         visible: !composition.screenCovered
-        layer.enabled: !comp.softwareRendering && comp.project.zoomStyle.motionBlur > 0
-            && comp.zoom.velocity > 0.01
-        layer.effect: MultiEffect {
-            blurEnabled: true
-            blurMax: 32
-            blur: Math.min(1, comp.zoom.velocity * .32) * comp.project.zoomStyle.motionBlur
-        }
-        transform: Scale {
-            origin.x: frame.x + comp.zoom.cx * frame.width
-            origin.y: frame.y + comp.zoom.cy * frame.height
-            xScale: comp.zoom.scale
-            yScale: comp.zoom.scale
-        }
-        RoundedFrame {
-            id: frame
-            x: (composition.width - width) / 2
-            y: (composition.height - height) / 2
-            width: composition.videoWidth
-            height: composition.videoHeight
-            settings: comp.project.frame
-            crop: comp.project.crop
-            softwareRendering: comp.softwareRendering
-            ref: composition.ref
-            unframed: composition.noBackground
-            nativePreview: composition.nativePreview
-        }
-        CursorOverlay {
-            x: frame.x
-            y: frame.y
-            width: frame.width
-            height: frame.height
-            cursor: comp.cursor
-            ripples: comp.ripples
-            settings: comp.project.cursor
-            ref: composition.cursorRef
+
+        Item {
+            id: stage
+            anchors.fill: parent
+            layer.enabled: !comp.softwareRendering && comp.project.zoomStyle.motionBlur > 0
+                && comp.zoom.velocity > 0.01
+            layer.effect: MultiEffect {
+                blurEnabled: true
+                blurMax: 32
+                blur: Math.min(1, comp.zoom.velocity * .32) * comp.project.zoomStyle.motionBlur
+            }
+            transform: Scale {
+                origin.x: frame.x + comp.zoom.cx * frame.width
+                origin.y: frame.y + comp.zoom.cy * frame.height
+                xScale: comp.zoom.scale
+                yScale: comp.zoom.scale
+            }
+            RoundedFrame {
+                id: frame
+                x: (screenClip.width - width) / 2
+                y: (screenClip.height - height) / 2
+                width: composition.videoWidth
+                height: composition.videoHeight
+                settings: comp.project.frame
+                crop: comp.project.crop
+                softwareRendering: comp.softwareRendering
+                ref: composition.ref
+                unframed: composition.noBackground
+                nativePreview: composition.nativePreview
+            }
+            CursorOverlay {
+                x: frame.x
+                y: frame.y
+                width: frame.width
+                height: frame.height
+                cursor: comp.cursor
+                ripples: comp.ripples
+                settings: comp.project.cursor
+                ref: composition.cursorRef
+            }
         }
     }
     CameraOverlay {
@@ -119,13 +148,20 @@ Item {
         softwareRendering: comp.softwareRendering
         nativePreview: composition.nativePreview
     }
-    KeystrokeOverlay {
-        visible: comp.project.keystrokes.enabled && comp.keystrokePills.length > 0
-            && !composition.screenCovered
-        opacity: 1 - composition.cameraFull
-        pills: comp.keystrokePills
-        settings: comp.project.keystrokes
-        colors: comp.project.renderTheme
-        ref: composition.ref
+    Item {
+        x: composition.regionX
+        y: composition.regionY
+        width: composition.regionWidth
+        height: composition.regionHeight
+
+        KeystrokeOverlay {
+            visible: comp.project.keystrokes.enabled && comp.keystrokePills.length > 0
+                && !composition.screenCovered
+            opacity: 1 - composition.cameraFull
+            pills: comp.keystrokePills
+            settings: comp.project.keystrokes
+            colors: comp.project.renderTheme
+            ref: composition.ref
+        }
     }
 }
