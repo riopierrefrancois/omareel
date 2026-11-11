@@ -115,7 +115,8 @@ settings file. The fallback cannot omit overlays placed inside its capture area.
 ### `edit BUNDLE`
 
 Opens an `.omareel` bundle. Changes autosave to `project.json` after 500 ms and may also be
-saved immediately with `Ctrl+S`.
+saved immediately with `Ctrl+S`. Delete recording (trash icon in the top bar) moves the
+recording to the Trash and closes the editor.
 
 Legacy `.omarecord` bundles remain supported, including bundles under
 `~/Videos/omarecord`. The legacy command name is installed as a compatibility alias. If only
