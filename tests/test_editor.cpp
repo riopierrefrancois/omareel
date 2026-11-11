@@ -2555,6 +2555,59 @@ private slots:
         QCOMPARE(row->property("title").toString(), QStringLiteral("Camera"));
     }
 
+    void clipPanelShowLabels()
+    {
+        Editor editor(cameraBundle(QStringLiteral("clip-show.omareel")));
+        QVERIFY2(editor.isValid(), qPrintable(editor.errorString()));
+        QVERIFY(editor.hasCamera());
+        const QString id = editor.clips().first().toMap().value(QStringLiteral("id")).toString();
+        editor.setSelectedClipId(id);
+
+        Theme theme;
+        QQmlEngine engine;
+        engine.rootContext()->setContextProperty(QStringLiteral("editor"), &editor);
+        engine.rootContext()->setContextProperty(QStringLiteral("theme"), &theme);
+        QQmlComponent component(&engine);
+        component.setData(R"(
+            import QtQuick
+            import QtQuick.Window
+            import Omareel
+            Window {
+                width: 320; height: 900; visible: true
+                ClipPanel { anchors.fill: parent }
+            })", QUrl());
+        QVERIFY2(component.isReady(), qPrintable(component.errorString()));
+        std::unique_ptr<QObject> object(component.create());
+        auto *window = qobject_cast<QQuickWindow *>(object.get());
+        QVERIFY(window);
+        QVERIFY(QTest::qWaitForWindowExposed(window));
+
+        const auto findItem = [](QQuickItem *parent, const QString &name) {
+            std::function<QQuickItem *(QQuickItem *)> visit = [&](QQuickItem *item) -> QQuickItem * {
+                if (item->objectName() == name) return item;
+                for (QQuickItem *child : item->childItems())
+                    if (QQuickItem *match = visit(child)) return match;
+                return nullptr;
+            };
+            return visit(parent);
+        };
+        auto *group = findItem(window->contentItem(), QStringLiteral("clipLayoutGroup"));
+        QTRY_VERIFY(group);
+        const QVariantList options = group->property("options").toList();
+        QCOMPARE(options.size(), 3);
+        const auto label = [&options](int index) {
+            return options[index].toMap().value(QStringLiteral("label")).toString();
+        };
+        QCOMPARE(label(0), QStringLiteral("Both"));
+        QCOMPARE(label(1), QStringLiteral("Camera"));
+        QCOMPARE(label(2), QStringLiteral("Screen"));
+
+        QVERIFY(QMetaObject::invokeMethod(group, "changed",
+            Q_ARG(QVariant, QVariant(QStringLiteral("camera")))));
+        QTRY_COMPARE(editor.clips().first().toMap().value(QStringLiteral("layout")).toString(),
+                     QStringLiteral("camera"));
+    }
+
 private:
     bool makeVideo(const QString &path, const QString &source, double seconds)
     {

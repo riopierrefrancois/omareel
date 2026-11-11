@@ -33,12 +33,12 @@ ColumnLayout {
         visible: root.selected !== null
         Layout.fillWidth: true
         spacing: theme.space.panelGap
-        PanelLabel { visible: editor.hasCamera && !root.insert; text: "Layout" }
+        PanelLabel { visible: editor.hasCamera && !root.insert; text: "Show" }
         OmButtonGroup {
             objectName: "clipLayoutGroup"
             visible: editor.hasCamera && !root.insert
             Layout.fillWidth: true
-            options: [{value:"default", label:"Screen & camera"}, {value:"camera", label:"Camera"},
+            options: [{value:"default", label:"Both"}, {value:"camera", label:"Camera"},
                 {value:"screen", label:"Screen"}]
             value: root.selected ? root.selected.layout : "default"
             onChanged: value => editor.setClipLayout(editor.selectedClipId, value)
@@ -48,9 +48,9 @@ ColumnLayout {
             Layout.fillWidth: true
             text: !root.selected ? ""
                 : root.selected.layout === "camera" ? "The camera fills the frame. Choose Fill or Square in Camera."
-                : root.selected.layout === "screen" ? "The screen alone, without the camera bubble."
-                : editor.project.camera.enabled ? "The screen with the camera bubble."
-                : "The screen alone: the camera bubble is off in Camera."
+                : root.selected.layout === "screen" ? "The screen alone, without the camera."
+                : editor.project.camera.enabled ? "The screen and the camera, as set in Layout."
+                : "The screen alone: Show camera is off in Camera."
             color: theme.textMuted
             font.pixelSize: theme.type.small
             wrapMode: Text.WordWrap

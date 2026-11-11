@@ -352,7 +352,7 @@ Item {
                             x: clipBadge.x + (clipBadge.width - width) / 2
                             width: layouts ? 168 : 120
                             Repeater {
-                                model: speedMenu.layouts ? [{value:"default", label:"Screen & camera"},
+                                model: speedMenu.layouts ? [{value:"default", label:"Both"},
                                     {value:"camera", label:"Camera"}, {value:"screen", label:"Screen"}] : []
                                 delegate: OmMenuItem {
                                     required property var modelData
