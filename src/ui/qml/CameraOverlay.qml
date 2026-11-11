@@ -13,13 +13,16 @@ Item {
     required property int sourceHeight
     property bool softwareRendering: false
     property bool nativePreview: false
+    // Split draws the camera in its band instead of the corner bubble.
+    property bool splitMode: false
+    property rect bandRect: Qt.rect(0, 0, 0, 0)
     // 0 shows the bubble, 1 the full-frame camera; values between morph one into the other.
     property real fullProgress: 0
     // How visible the bubble is while the camera is not full frame.
     property real bubbleOpacity: 1
     property real ref: outputHeight / 1080
     readonly property string fullMode: settings.fullFrame === "square" ? "square" : "fill"
-    readonly property real sourceBorderWidth: settings.border.enabled ? settings.border.width * ref : 0
+    readonly property real sourceBorderWidth: splitMode ? 0 : (settings.border.enabled ? settings.border.width * ref : 0)
     readonly property real borderWidth: sourceBorderWidth * (1 - fullProgress)
     readonly property bool squareCrop: settings.shape !== "rectangle"
     readonly property bool quarterTurn: settings.rotation === 90 || settings.rotation === 270
@@ -48,17 +51,20 @@ Item {
     readonly property real zoomProgress: Math.max(0, Math.min(1, (zoomScale - 1.05) / 0.1))
     readonly property real zoomMultiplier: 1 - (1 - settings.scaleDuringZoom) * zoomProgress
 
-    readonly property real bubbleHeight: outputHeight * sizeSetting * zoomMultiplier
-    readonly property real bubbleWidth: bubbleHeight * aspect
+    readonly property real bubbleHeight: splitMode ? bandRect.height : outputHeight * sizeSetting * zoomMultiplier
+    readonly property real bubbleWidth: splitMode ? bandRect.width : bubbleHeight * aspect
     // The gap to the corner is a share of the shorter side, so it is the same at the side and the
     // bottom, and it ends at the outside of the border.
     readonly property real marginX: Math.min(outputWidth, outputHeight) * offsetX + sourceBorderWidth
     readonly property real marginY: Math.min(outputWidth, outputHeight) * offsetY + sourceBorderWidth
-    readonly property real bubbleX: marginX * leftness + (outputWidth - marginX - bubbleWidth) * (1 - leftness)
-    readonly property real bubbleY: marginY * topness + (outputHeight - marginY - bubbleHeight) * (1 - topness)
+    readonly property real bubbleX: splitMode ? bandRect.x
+        : marginX * leftness + (outputWidth - marginX - bubbleWidth) * (1 - leftness)
+    readonly property real bubbleY: splitMode ? bandRect.y
+        : marginY * topness + (outputHeight - marginY - bubbleHeight) * (1 - topness)
     // Round is the corner radius at half the shorter side; a shape change blends between them.
-    readonly property real bubbleRadius: Math.min(bubbleWidth, bubbleHeight) / 2 * roundness
-        + cornerSetting * ref * (1 - roundness)
+    readonly property real bubbleRadius: splitMode ? 0
+        : Math.min(bubbleWidth, bubbleHeight) / 2 * roundness
+            + cornerSetting * ref * (1 - roundness)
     // Fill covers the whole canvas; square keeps the largest centred square over a blurred copy.
     readonly property real fullSide: Math.min(outputWidth, outputHeight)
     readonly property real fullWidth: fullMode === "square" ? fullSide : outputWidth
@@ -79,7 +85,7 @@ Item {
     // turns into the other, and falls to 0 only where the camera leaves the frame.
     readonly property real presence: Math.min(1, fullProgress + bubbleOpacity)
     opacity: presence
-    scale: .85 + .15 * presence
+    scale: splitMode ? 1 : .85 + .15 * presence
 
     // The part of the camera frame shown in an item of this size: centred, filling it.
     function coverCrop(itemWidth, itemHeight) {
@@ -125,7 +131,7 @@ Item {
         visible: root.settings.shadow.enabled && !root.softwareRendering
         shadowEnabled: true
         shadowColor: Qt.rgba(0, 0, 0, 1)
-        shadowOpacity: root.settings.shadow.intensity * (1 - root.fullProgress)
+        shadowOpacity: root.splitMode ? 0 : root.settings.shadow.intensity * (1 - root.fullProgress)
         shadowBlur: Math.min(1, root.settings.shadow.blur / 64)
         shadowHorizontalOffset: root.shadowX
         shadowVerticalOffset: root.shadowY
@@ -138,7 +144,7 @@ Item {
         height: parent.height + 2 * root.borderWidth
         radius: shadowShape.radius
         color: "black"
-        opacity: root.softwareRendering && root.settings.shadow.enabled
+        opacity: !root.splitMode && root.softwareRendering && root.settings.shadow.enabled
             ? root.settings.shadow.intensity * .45 * (1 - root.fullProgress) : 0
     }
     Item {

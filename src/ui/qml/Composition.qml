@@ -126,6 +126,9 @@ Item {
         settings: comp.project.camera
         fullProgress: composition.cameraFull
         bubbleOpacity: comp.layout.bubble
+        splitMode: composition.splitActive
+        bandRect: Qt.rect(comp.layout.cameraX || 0, comp.layout.cameraY || 0,
+                          comp.layout.cameraWidth || 0, comp.layout.cameraHeight || 0)
         zoomScale: comp.zoom.scale
         outputWidth: composition.width
         outputHeight: composition.height
