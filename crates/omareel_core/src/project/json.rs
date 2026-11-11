@@ -285,6 +285,13 @@ impl Project {
         p.frame.border.width = border.value("width").to_double(p.frame.border.width);
         p.frame.border.color = parse_color(border.value("color"), &p.frame.border.color);
         p.frame.border.alpha = border.value("alpha").to_double(p.frame.border.alpha);
+        let screen = source.value("screen").to_object();
+        p.screen.zoom = cpp::clamp(screen.value("zoom").to_double(1.0), 1.0, 4.0);
+        let screen_pan = screen.value("pan").to_object();
+        p.screen.pan = PointF::new(
+            cpp::clamp(screen_pan.value("x").to_double(0.0), -1.0, 1.0),
+            cpp::clamp(screen_pan.value("y").to_double(0.0), -1.0, 1.0),
+        );
 
         let c = source.value("cursor").to_object();
         p.cursor.visible = c.value("visible").to_bool(true);
@@ -514,7 +521,7 @@ impl Project {
         if cam.split_pan.x != 0.0 || cam.split_pan.y != 0.0 {
             camera.insert("splitPan", obj([("x", cam.split_pan.x.into()), ("y", cam.split_pan.y.into())]));
         }
-        Object::from_iter([
+        let mut root = Object::from_iter([
             ("version", Value::from(self.version)),
             ("defaultsVersion", self.defaults_version.into()),
             ("name", self.name.as_str().into()),
@@ -571,7 +578,18 @@ impl Project {
                     ),
                 ]),
             ),
-        ])
+        ]);
+        // The fitted, unpanned screen is the missing value.
+        if self.screen.zoom != 1.0 || self.screen.pan.x != 0.0 || self.screen.pan.y != 0.0 {
+            root.insert(
+                "screen",
+                obj([
+                    ("zoom", self.screen.zoom.into()),
+                    ("pan", obj([("x", self.screen.pan.x.into()), ("y", self.screen.pan.y.into())])),
+                ]),
+            );
+        }
+        root
     }
 
     /// Reads `project.json`, writing it back when a migration changed it. On failure the

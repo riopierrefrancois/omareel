@@ -216,6 +216,44 @@ fn camera_split_framing_loads_and_saves() {
 }
 
 #[test]
+fn screen_framing_loads_and_saves() {
+    let load = |json: &str| Project::from_json(&object(json));
+
+    let plain = load("{}");
+    assert!(qcompare(plain.screen.zoom, 1.0));
+    assert!(qcompare_point(plain.screen.pan, PointF::new(0.0, 0.0)));
+    assert!(!plain.to_json().contains("screen"));
+
+    assert!(qcompare(load(r#"{"screen": {"zoom": 2}}"#).screen.zoom, 2.0));
+    assert!(qcompare(load(r#"{"screen": {"zoom": 0.5}}"#).screen.zoom, 1.0));
+    assert!(qcompare(load(r#"{"screen": {"zoom": 9}}"#).screen.zoom, 4.0));
+
+    let pan = load(r#"{"screen": {"pan": {"x": 3, "y": -3}}}"#).screen.pan;
+    assert!(qcompare_point(pan, PointF::new(1.0, -1.0)));
+    let x_only = load(r#"{"screen": {"pan": {"x": 0.2}}}"#).screen.pan;
+    assert!(qcompare_point(x_only, PointF::new(0.2, 0.0)));
+
+    let mut framed = Project::default();
+    framed.screen.zoom = 1.5;
+    framed.screen.pan = PointF::new(-0.3, 0.0);
+    let json = framed.to_json();
+    let written = json.value("screen").to_object();
+    assert!(qcompare(written.value("zoom").to_double(0.0), 1.5));
+    let written_pan = written.value("pan").to_object();
+    assert!(qcompare(written_pan.value("x").to_double(0.0), -0.3));
+    assert!(qcompare(written_pan.value("y").to_double(0.0), 0.0));
+    let loaded = Project::from_json(&json);
+    assert_eq!(loaded.screen, framed.screen);
+
+    // At zoom 1 a panned screen still writes both keys.
+    framed.screen.zoom = 1.0;
+    framed.screen.pan = PointF::new(0.2, 0.0);
+    let written = framed.to_json().value("screen").to_object();
+    assert!(qcompare(written.value("zoom").to_double(0.0), 1.0));
+    assert!(qcompare(written.value("pan").to_object().value("x").to_double(0.0), 0.2));
+}
+
+#[test]
 fn inserted_videos_stay_inside_the_bundle() {
     assert_eq!(sanitized_media_path("media/demo.mp4"), "media/demo.mp4");
     assert_eq!(sanitized_media_path("media/./demo.mp4"), "media/demo.mp4");
