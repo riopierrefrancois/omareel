@@ -39,6 +39,36 @@ ColumnLayout {
         opacity: enabled ? 1 : .42
         Behavior on opacity { NumberAnimation { duration: 160 } }
 
+        OmSettingRow {
+            label: "Layout"
+            OmButtonGroup {
+                objectName: "cameraLayoutGroup"
+                Layout.preferredWidth: 176
+                options: [{value: "split", label: "Split"}, {value: "bubble", label: "Bubble"}]
+                value: editor.activeCameraLayout
+                onChanged: value => editor.setProjectValue("camera.layout", value)
+            }
+        }
+        OmSettingRow {
+            visible: editor.activeCameraLayout === "split"
+            label: "Screen / camera"
+            OmButtonGroup {
+                objectName: "cameraSplitRatioGroup"
+                Layout.preferredWidth: 212
+                options: [{value: 0.5, label: "50/50"}, {value: 0.6, label: "60/40"}, {value: 0.7, label: "70/30"}]
+                value: root.camera.splitRatio === undefined ? 0.6 : root.camera.splitRatio
+                onChanged: value => editor.setProjectValue("camera.splitRatio", value)
+            }
+        }
+        Label {
+            visible: editor.activeCameraLayout === "split"
+            Layout.fillWidth: true
+            text: "Tall canvas: camera below the screen. Wide canvas: camera to the right. Changing the aspect or turning the camera off and on picks the layout again."
+            color: theme.textMuted
+            font.pixelSize: theme.type.small
+            wrapMode: Text.WordWrap
+        }
+
         PanelHeading { text: "Position"; Layout.topMargin: 2 }
         // A miniature canvas: click a quadrant and the bubble glides to that corner.
         Rectangle {
