@@ -342,6 +342,8 @@ impl ExportJob {
         for zoom in &project.zooms {
             maximum_zoom = cpp::max(maximum_zoom, zoom.level);
         }
+        // A base screen framing zoom needs its pixels decoded too.
+        let maximum_zoom = maximum_zoom * cpp::max(1.0, project.screen.zoom);
         let needed_width = maximum_zoom * f64::from(width) / cpp::max(0.0001, project.crop.width);
         let needed_height = maximum_zoom * f64::from(height) / cpp::max(0.0001, project.crop.height);
         let decode_scale = cpp::clamp(
