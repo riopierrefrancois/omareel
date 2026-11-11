@@ -1174,7 +1174,20 @@ impl qobject::Editor {
     fn preview_layout(&self) -> QMap<QMapPair_QString_QVariant> {
         let Some(document) = self.document.as_ref() else { return QMap::default() };
         let layout = document.preview_layout();
-        map([("cameraFull", QVariant::from(&layout.camera_full)), ("bubble", QVariant::from(&layout.bubble))])
+        map([
+            ("cameraFull", QVariant::from(&layout.camera_full)),
+            ("bubble", QVariant::from(&layout.bubble)),
+            ("splitActive", QVariant::from(&layout.split_active)),
+            ("sideBySide", QVariant::from(&layout.split.side_by_side)),
+            ("screenX", QVariant::from(&layout.split.screen_region.x)),
+            ("screenY", QVariant::from(&layout.split.screen_region.y)),
+            ("screenWidth", QVariant::from(&layout.split.screen_region.width)),
+            ("screenHeight", QVariant::from(&layout.split.screen_region.height)),
+            ("cameraX", QVariant::from(&layout.split.camera_rect.x)),
+            ("cameraY", QVariant::from(&layout.split.camera_rect.y)),
+            ("cameraWidth", QVariant::from(&layout.split.camera_rect.width)),
+            ("cameraHeight", QVariant::from(&layout.split.camera_rect.height)),
+        ])
     }
 
     fn preview_media(&self) -> QMap<QMapPair_QString_QVariant> {

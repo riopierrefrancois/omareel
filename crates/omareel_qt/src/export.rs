@@ -413,7 +413,20 @@ impl ExportJob {
 
     fn layout_map(&self) -> QMap<QMapPair_QString_QVariant> {
         let Some(s) = self.state() else { return QMap::default() };
-        map([("cameraFull", QVariant::from(&s.layout.camera_full)), ("bubble", QVariant::from(&s.layout.bubble))])
+        map([
+            ("cameraFull", QVariant::from(&s.layout.camera_full)),
+            ("bubble", QVariant::from(&s.layout.bubble)),
+            ("splitActive", QVariant::from(&s.layout.split_active)),
+            ("sideBySide", QVariant::from(&s.layout.split.side_by_side)),
+            ("screenX", QVariant::from(&s.layout.split.screen_region.x)),
+            ("screenY", QVariant::from(&s.layout.split.screen_region.y)),
+            ("screenWidth", QVariant::from(&s.layout.split.screen_region.width)),
+            ("screenHeight", QVariant::from(&s.layout.split.screen_region.height)),
+            ("cameraX", QVariant::from(&s.layout.split.camera_rect.x)),
+            ("cameraY", QVariant::from(&s.layout.split.camera_rect.y)),
+            ("cameraWidth", QVariant::from(&s.layout.split.camera_rect.width)),
+            ("cameraHeight", QVariant::from(&s.layout.split.camera_rect.height)),
+        ])
     }
 
     fn media_map(&self) -> QMap<QMapPair_QString_QVariant> {
