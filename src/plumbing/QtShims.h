@@ -19,5 +19,7 @@ QColor invalidWithAlpha(quint16 alpha);
 // qWarning().noquote() << message: Qt's message handler, so the journal gets it when there is no
 // terminal, as it got the recorder daemon's warnings before they moved to Rust.
 void warning(const QString &message);
+// Moves a file or directory to the desktop Trash (freedesktop), so it can be restored.
+bool moveToTrash(const QString &path);
 
 } // namespace Omareel::Shims

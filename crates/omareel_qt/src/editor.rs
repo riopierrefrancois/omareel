@@ -69,6 +69,12 @@ pub mod qobject {
         type ExportOptions = crate::export::ffi::ExportOptions;
     }
 
+    #[namespace = "Omareel::Shims"]
+    unsafe extern "C++" {
+        #[cxx_name = "moveToTrash"]
+        fn move_to_trash(path: &QString) -> bool;
+    }
+
     #[namespace = "Omareel::EditorShims"]
     unsafe extern "C++" {
         #[cxx_name = "projectValueJson"]
