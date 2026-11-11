@@ -2,6 +2,8 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Controls.impl
 import QtQuick.Layouts
+import QtCore
+import Omareel.Ui
 
 ApplicationWindow {
     id: window
@@ -14,6 +16,15 @@ ApplicationWindow {
     font.pixelSize: theme.type.body
     color: theme.surface
     title: editor.bundleName + " — Omareel"
+    Settings {
+        id: editorLayout
+        category: "editor"
+        // 0 means the timeline's own minimum height.
+        property real timelineHeight: 0
+    }
+    // Tallest timeline that still leaves the preview its minimum height.
+    readonly property real maximumTimelineHeight: Math.max(timeline.implicitHeight,
+        editorUi.height - topBar.height - bottomBar.height - previewPane.Layout.minimumHeight)
     property real timelineScale: 1
     property bool cropMode: false
     readonly property bool singleKeyShortcutsBlocked: activeFocusItem !== null
@@ -110,10 +121,52 @@ ApplicationWindow {
                 id: timeline
                 objectName: "editorTimeline"
                 Layout.fillWidth: true
-                Layout.preferredHeight: implicitHeight
+                Layout.preferredHeight: Math.max(implicitHeight,
+                    Math.min(editorLayout.timelineHeight, window.maximumTimelineHeight))
+                resizing: timelineResize.pressed
                 scaleFactor: window.timelineScale
                 onScaleFactorRequested: value => window.timelineScale = value
                 onCameraSelected: sidePanel.section = 5
+            }
+        }
+
+        MouseArea {
+            id: timelineResize
+            objectName: "timelineResizeHandle"
+            x: 0
+            y: timeline.mapToItem(editorUi, 0, 0).y - height / 2
+            width: editorUi.width
+            height: 8
+            z: 10
+            hoverEnabled: true
+            preventStealing: true
+            cursorShape: Qt.SizeVerCursor
+            property real startY: 0
+            property real startHeight: 0
+            onPressed: mouse => {
+                startY = mapToItem(editorUi, mouse.x, mouse.y).y
+                startHeight = timeline.height
+            }
+            onPositionChanged: mouse => {
+                if (!pressed) return
+                const delta = startY - mapToItem(editorUi, mouse.x, mouse.y).y
+                editorLayout.timelineHeight = Math.max(timeline.implicitHeight,
+                    Math.min(window.maximumTimelineHeight, startHeight + delta))
+            }
+            onDoubleClicked: editorLayout.timelineHeight = 0
+            Rectangle {
+                anchors.verticalCenter: parent.verticalCenter
+                width: parent.width
+                height: 2
+                color: theme.accent
+                opacity: timelineResize.pressed || timelineResize.containsMouse ? 1 : 0
+                Behavior on opacity { NumberAnimation { duration: 120; easing.type: Easing.OutCubic } }
+            }
+            OmLazyToolTip {
+                target: timelineResize
+                shown: timelineResize.containsMouse && !timelineResize.pressed
+                text: "Drag to resize the timeline. Double-click to reset."
+                delay: 600
             }
         }
     }
