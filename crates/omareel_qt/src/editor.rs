@@ -160,6 +160,7 @@ pub mod qobject {
         #[qproperty(i32, camera_source_width, READ = camera_source_width, CONSTANT)]
         #[qproperty(i32, camera_source_height, READ = camera_source_height, CONSTANT)]
         #[qproperty(QString, camera_status, READ = camera_status, CONSTANT)]
+        #[qproperty(QString, active_camera_layout, READ = active_camera_layout, NOTIFY = project_changed)]
         type Editor = super::EditorRust;
 
         #[qsignal]
@@ -266,6 +267,7 @@ pub mod qobject {
         fn camera_source_width(self: &Editor) -> i32;
         fn camera_source_height(self: &Editor) -> i32;
         fn camera_status(self: &Editor) -> QString;
+        fn active_camera_layout(self: &Editor) -> QString;
         fn camera_visible(self: &Editor) -> bool;
         // Test hook (no UI use).
         fn screen_frame_times_ready_for_tests(self: &Editor) -> bool;
@@ -1263,6 +1265,10 @@ impl qobject::Editor {
             Some(document) => qstring(&document.camera_status()),
             None => qstring("No webcam in this bundle"),
         }
+    }
+
+    fn active_camera_layout(&self) -> QString {
+        self.document.as_ref().map_or_else(|| qstring("bubble"), |d| qstring(d.active_camera_layout()))
     }
 
     fn camera_visible(&self) -> bool {
