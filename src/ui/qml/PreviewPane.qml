@@ -72,15 +72,10 @@ FocusScope {
                     if (editor.zooms[i].id === editor.selectedZoomId) return editor.zooms[i]
                 return null
             }
-            readonly property bool noBackground: editor.project.background.type === "none"
-            readonly property real pad: noBackground ? 0 : Math.min(width, height) * editor.project.frame.padding
-            readonly property real sourceAspect: (editor.sourceWidth * editor.project.crop.w)
-                / Math.max(1, editor.sourceHeight * editor.project.crop.h)
-            readonly property real videoWidth: noBackground ? width
-                : Math.min(width - 2 * pad, (height - 2 * pad) * sourceAspect)
-            readonly property real videoHeight: noBackground ? height : videoWidth / sourceAspect
-            readonly property real frameX: (width - videoWidth) / 2
-            readonly property real frameY: (height - videoHeight) / 2
+            readonly property real frameX: composition.frameX
+            readonly property real frameY: composition.frameY
+            readonly property real videoWidth: composition.frameWidth
+            readonly property real videoHeight: composition.frameHeight
             readonly property real zoomOriginX: frameX + editor.zoom.cx * videoWidth
             readonly property real zoomOriginY: frameY + editor.zoom.cy * videoHeight
             function targetFromScene(px, py) {
