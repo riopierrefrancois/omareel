@@ -793,6 +793,20 @@ fn clip_layouts_are_undoable_and_survive_splits() {
 }
 
 #[test]
+fn active_camera_layout_follows_the_canvas() {
+    let world = World::new("editor-active-layout");
+    let mut qt = world.open(&world.camera_bundle("active.omareel"));
+    assert_eq!(qt.document.project().camera.layout, "auto");
+    qt.run(|d| d.set_project_value("camera.enabled", true.into(), false));
+    qt.run(|d| d.set_project_value("aspect", "16:9".into(), false));
+    assert_eq!(qt.document.active_camera_layout(), "bubble");
+    qt.run(|d| d.set_project_value("aspect", "9:16".into(), false));
+    assert_eq!(qt.document.active_camera_layout(), "split");
+    // The test world's only recording is 320x180, so the "auto" aspect on a portrait recording
+    // cannot be built here; split_layout's own tests cover a canvas taller than wide.
+}
+
+#[test]
 fn camera_timing_and_status() {
     let world = World::new("editor-camera-status");
     let bundle = world.camera_bundle("status.omareel");

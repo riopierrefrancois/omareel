@@ -7,10 +7,12 @@
 //! default sample.
 
 use super::Document;
+use super::aspect_ratio;
 use crate::camera_timeline::map_camera_time;
 use crate::compat::cpp;
 use crate::keystroke_track::KeystrokePill;
 use crate::motion_track::{MotionSample, RippleSample};
+use crate::split_layout;
 
 /// `zoom`: `{scale, cx, cy, velocity}`, all doubles.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -67,6 +69,15 @@ pub struct PreviewComposition {
 }
 
 impl Document {
+    /// The layout the preview draws; Split shares the canvas with the screen.
+    pub fn active_camera_layout(&self) -> &'static str {
+        split_layout::active_camera_layout(
+            &self.project,
+            self.has_camera(),
+            aspect_ratio(&self.project, self.recording.source_width, self.recording.source_height),
+        )
+    }
+
     fn showing_insert(&self) -> bool {
         self.clip_is_media(self.clip_for_output(self.output_position).0)
     }
