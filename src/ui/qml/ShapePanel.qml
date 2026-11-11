@@ -11,7 +11,7 @@ ColumnLayout {
     Label {
         visible: !root.frameEnabled
         Layout.fillWidth: true
-        text: "Shape settings stay saved but are ignored while the background type is None."
+        text: "Screen style stays saved but is ignored while the background is None."
         wrapMode: Text.WordWrap
         color: theme.textMuted
         font.pixelSize: theme.type.small
