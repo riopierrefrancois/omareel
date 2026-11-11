@@ -807,6 +807,52 @@ fn active_camera_layout_follows_the_canvas() {
 }
 
 #[test]
+fn a_changed_aspect_or_camera_switch_picks_the_layout_again() {
+    let world = World::new("editor-layout-reset");
+    let mut qt = world.open(&world.camera_bundle("reset.omareel"));
+    let layout = |qt: &Qt| qt.document.project().camera.layout.clone();
+    let active = |qt: &Qt| qt.document.active_camera_layout();
+
+    qt.run(|d| d.set_project_value("aspect", "16:9".into(), false));
+    assert_eq!(active(&qt), "bubble");
+    qt.run(|d| d.set_project_value("aspect", "9:16".into(), false));
+    assert_eq!(active(&qt), "split");
+    assert_eq!(layout(&qt), "auto");
+
+    qt.run(|d| d.set_project_value("camera.layout", "bubble".into(), false));
+    assert_eq!(active(&qt), "bubble");
+
+    // The same aspect again is no edit and leaves the choice alone.
+    let steps = qt.undo_steps();
+    qt.run(|d| d.set_project_value("aspect", "9:16".into(), false));
+    assert_eq!(qt.undo_steps(), steps);
+    assert_eq!(layout(&qt), "bubble");
+    assert_eq!(active(&qt), "bubble");
+
+    // A real aspect change picks the layout automatically again, in one undo step, which
+    // restores the aspect and the explicit Bubble together.
+    qt.run(|d| d.set_project_value("aspect", "4:5".into(), false));
+    assert_eq!(layout(&qt), "auto");
+    assert_eq!(active(&qt), "split");
+    qt.run(Document::undo);
+    assert_eq!(qt.document.project().aspect, "9:16");
+    assert_eq!(layout(&qt), "bubble");
+    assert_eq!(active(&qt), "bubble");
+
+    // Turning the camera off and on does the same.
+    qt.run(|d| d.set_project_value("camera.enabled", false.into(), false));
+    qt.run(|d| d.set_project_value("camera.enabled", true.into(), false));
+    assert_eq!(layout(&qt), "auto");
+    assert_eq!(active(&qt), "split");
+
+    // An aspect from_json rejects falls back to "auto", which this landscape canvas draws as
+    // a Bubble. It is a real aspect change, so it is checked after the undo chain above.
+    qt.run(|d| d.set_project_value("aspect", "bogus".into(), false));
+    assert_eq!(qt.document.project().aspect, "auto");
+    assert_eq!(active(&qt), "bubble");
+}
+
+#[test]
 fn camera_timing_and_status() {
     let world = World::new("editor-camera-status");
     let bundle = world.camera_bundle("status.omareel");
