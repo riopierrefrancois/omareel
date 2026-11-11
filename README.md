@@ -17,6 +17,7 @@ cursor-following zooms. Finished projects export to MP4 or GIF.
 - Synthetic cursor smoothing, click rings, idle hiding, and cursor-following auto zooms.
 - Aspect presets, padding, rounded corners, inset borders, and configurable shadows.
 - Camera rotation, horizontal flip, independent shadow/border styling, and 720p/1080p capture.
+- Split layout for vertical video.
 - Hardware-accelerated MP4 export with CPU fallback, plus GIF export.
 - Self-contained `.omareel` project bundles that preserve the source and editor state.
 

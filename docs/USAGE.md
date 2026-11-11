@@ -181,6 +181,21 @@ clips look: **Fill frame** covers the whole canvas with the uncropped webcam, an
 keeps a centred square over a blurred copy of the camera. Camera clips show the webcam even with
 the bubble switched off.
 
+## Camera layout
+
+The Camera panel's Layout control chooses **Split** or **Bubble**. Bubble is the corner overlay.
+Split gives the screen one part of the canvas and the camera the other: below the screen on a
+canvas taller than wide, to its right on a wide canvas. Auto picks Split for any canvas taller
+than wide (9:16, 4:5, 3:4, and portrait-monitor recordings); a square or wide canvas stays Bubble.
+Screen / camera picks the split as 50/50, 60/40 (the default), or 70/30. Changing the aspect or
+turning the camera off and on picks the layout automatically again. Bubble-only settings
+(position, size, shape, corner radius, shrink while zoomed, shadow, and border) are hidden in
+Split; Full screen, Rotation, and Mirror stay available.
+
+Drag the timeline's top edge up or down to resize it; the Clip, Zoom, and Camera rows grow
+together and keep a 48 px minimum. Double-click the edge to reset the timeline to its minimum
+height.
+
 ## Inserted videos
 
 Press `I`, click the film button beside the scissors, or use **Insert video at playhead** in the
