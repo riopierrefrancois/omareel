@@ -27,6 +27,20 @@ static bool makeColourVideo(const QString &colour, const QString &path, double s
     return process.waitForFinished(30000) && process.exitCode() == 0;
 }
 
+// A clip with `left` on its left half and `right` on its right half, for framing checks.
+static bool makeTwoColourVideo(const QString &left, const QString &right, const QString &path,
+                               double seconds = 2.0, const QString &half = QStringLiteral("320x360"))
+{
+    QProcess process;
+    process.start(QStringLiteral("ffmpeg"), {QStringLiteral("-y"), QStringLiteral("-v"), QStringLiteral("error"),
+        QStringLiteral("-f"), QStringLiteral("lavfi"), QStringLiteral("-i"),
+        QStringLiteral("color=c=%1:s=%2:r=30[l];color=c=%3:s=%2:r=30[r];[l][r]hstack")
+            .arg(left, half, right),
+        QStringLiteral("-t"), QString::number(seconds), QStringLiteral("-c:v"), QStringLiteral("libx264"),
+        QStringLiteral("-pix_fmt"), QStringLiteral("yuv420p"), path});
+    return process.waitForFinished(30000) && process.exitCode() == 0;
+}
+
 // A solid colour clip with a sine tone, for checking which source plays where.
 static bool makeToneVideo(const QString &colour, const QString &path, double seconds,
                           const QString &size, int frequency, int sampleRate, int channels)
@@ -85,6 +99,19 @@ static double probeDuration(const QString &path)
         QStringLiteral("-of"), QStringLiteral("csv=p=0"), path});
     if (!probe.waitForFinished(15000)) return -1.0;
     return probe.readAllStandardOutput().trimmed().toDouble();
+}
+
+static QSize probeSize(const QString &path)
+{
+    QProcess probe;
+    probe.start(QStringLiteral("ffprobe"), {QStringLiteral("-v"), QStringLiteral("error"),
+        QStringLiteral("-select_streams"), QStringLiteral("v:0"),
+        QStringLiteral("-show_entries"), QStringLiteral("stream=width,height"),
+        QStringLiteral("-of"), QStringLiteral("csv=p=0:s=x"), path});
+    if (!probe.waitForFinished(15000)) return {};
+    const QStringList parts = QString::fromUtf8(probe.readAllStandardOutput()).trimmed().split(QLatin1Char('x'));
+    if (parts.size() != 2) return {};
+    return QSize(parts[0].toInt(), parts[1].toInt());
 }
 
 static QColor pixelAt(const QString &video, double seconds, int x, int y)
@@ -350,6 +377,69 @@ private slots:
         QVERIFY2(exportBundle(bundle, noBubble, &error), qPrintable(error));
         QVERIFY(isRed(pixelAt(noBubble, 0.5, 320, 180)));
         QVERIFY(isGreen(pixelAt(noBubble, 1.9, 582, 308)));
+    }
+
+    void splitCameraFramingExports()
+    {
+        if (QStandardPaths::findExecutable(QStringLiteral("ffmpeg")).isEmpty()
+            || QStandardPaths::findExecutable(QStringLiteral("ffprobe")).isEmpty())
+            QSKIP("ffmpeg/ffprobe unavailable");
+        QTemporaryDir temporary;
+        QVERIFY(temporary.isValid());
+        const QString bundle = temporary.filePath(QStringLiteral("split-framing.omareel"));
+        QVERIFY(QDir().mkpath(bundle));
+        QVERIFY(makeColourVideo(QStringLiteral("blue"), QDir(bundle).filePath(QStringLiteral("screen.mp4"))));
+        // Red on the camera's left half, yellow on its right half.
+        QVERIFY(makeTwoColourVideo(QStringLiteral("red"), QStringLiteral("yellow"),
+                                   QDir(bundle).filePath(QStringLiteral("camera.mp4"))));
+        QFile capture(QDir(bundle).filePath(QStringLiteral("capture.json")));
+        QVERIFY(capture.open(QIODevice::WriteOnly));
+        capture.write(R"({"fps":30,"first_frame_us":1000,"camera":{"first_frame_us":1000}})");
+        capture.close();
+        QFile input(QDir(bundle).filePath(QStringLiteral("input.jsonl")));
+        QVERIFY(input.open(QIODevice::WriteOnly));
+        input.close();
+
+        QJsonObject project = ProjectJson::defaults(QStringLiteral("Framing"), 2.0);
+        ProjectJson::set(project, {"aspect"}, QStringLiteral("9:16"));
+        ProjectJson::set(project, {"background", "type"}, QStringLiteral("color"));
+        ProjectJson::set(project, {"background", "color"}, QStringLiteral("#00c000"));
+        ProjectJson::set(project, {"cursor", "visible"}, false);
+        ProjectJson::set(project, {"camera", "enabled"}, true);
+        ProjectJson::set(project, {"camera", "layout"}, QStringLiteral("split"));
+        ProjectJson::set(project, {"camera", "shadow", "enabled"}, false);
+        const QString projectPath = QDir(bundle).filePath(QStringLiteral("project.json"));
+        QString error;
+        QVERIFY2(ProjectJson::save(project, projectPath, &error), qPrintable(error));
+
+        // The camera band is the bottom 40% of a 9:16 output.
+        const QString output = temporary.filePath(QStringLiteral("default.mp4"));
+        QVERIFY2(exportBundle(bundle, output, &error), qPrintable(error));
+        const QSize size = probeSize(output);
+        QVERIFY2(size.isValid(), qPrintable(QStringLiteral("%1x%2").arg(size.width()).arg(size.height())));
+        QCOMPARE(size.width(), 640);
+        QVERIFY2(qAbs(size.height() - 1138) <= 2, qPrintable(QString::number(size.height())));
+        const int y = qRound(size.height() * 0.8);
+        QVERIFY(isRed(pixelAt(output, 1.0, 160, y)));
+        QVERIFY(isYellow(pixelAt(output, 1.0, 480, y)));
+
+        // Zoom 2 with the picture moved right shows the source's left (red) part everywhere.
+        ProjectJson::set(project, {"camera", "splitZoom"}, 2.0);
+        ProjectJson::set(project, {"camera", "splitPan", "x"}, 1.0);
+        ProjectJson::set(project, {"camera", "splitPan", "y"}, 0.0);
+        QVERIFY2(ProjectJson::save(project, projectPath, &error), qPrintable(error));
+        const QString zoomRight = temporary.filePath(QStringLiteral("zoom-right.mp4"));
+        QVERIFY2(exportBundle(bundle, zoomRight, &error), qPrintable(error));
+        QVERIFY(isRed(pixelAt(zoomRight, 1.0, 160, y)));
+        QVERIFY(isRed(pixelAt(zoomRight, 1.0, 480, y)));
+
+        // Moving the picture left shows the source's right (yellow) part everywhere.
+        ProjectJson::set(project, {"camera", "splitPan", "x"}, -1.0);
+        QVERIFY2(ProjectJson::save(project, projectPath, &error), qPrintable(error));
+        const QString zoomLeft = temporary.filePath(QStringLiteral("zoom-left.mp4"));
+        QVERIFY2(exportBundle(bundle, zoomLeft, &error), qPrintable(error));
+        QVERIFY(isYellow(pixelAt(zoomLeft, 1.0, 160, y)));
+        QVERIFY(isYellow(pixelAt(zoomLeft, 1.0, 480, y)));
     }
 
     void insertedClipsPlayWithTheirOwnPictureAndSound()
