@@ -2149,6 +2149,70 @@ private slots:
         QTRY_VERIFY(!zoom->isVisible());
     }
 
+    void shapePanelScreenFraming()
+    {
+        const QString bundle = plainBundle(QStringLiteral("shape-framing.omareel"));
+        QFile::remove(QDir(bundle).filePath(QStringLiteral("project.json")));
+        Editor editor(bundle);
+        QVERIFY2(editor.isValid(), qPrintable(editor.errorString()));
+
+        Theme theme;
+        QQmlEngine engine;
+        engine.rootContext()->setContextProperty(QStringLiteral("editor"), &editor);
+        engine.rootContext()->setContextProperty(QStringLiteral("theme"), &theme);
+        QQmlComponent component(&engine);
+        component.setData(R"(
+            import QtQuick
+            import QtQuick.Window
+            import Omareel
+            Window {
+                width: 284; height: 900; visible: true
+                ShapePanel { anchors.fill: parent }
+            })", QUrl());
+        QVERIFY2(component.isReady(), qPrintable(component.errorString()));
+        std::unique_ptr<QObject> object(component.create());
+        auto *window = qobject_cast<QQuickWindow *>(object.get());
+        QVERIFY(window);
+        QVERIFY(QTest::qWaitForWindowExposed(window));
+
+        const auto findItem = [](QQuickItem *parent, const QString &name) {
+            std::function<QQuickItem *(QQuickItem *)> visit = [&](QQuickItem *item) -> QQuickItem * {
+                if (item->objectName() == name) return item;
+                for (QQuickItem *child : item->childItems())
+                    if (QQuickItem *match = visit(child)) return match;
+                return nullptr;
+            };
+            return visit(parent);
+        };
+        auto *zoom = findItem(window->contentItem(), QStringLiteral("screenFramingZoom"));
+        QTRY_VERIFY(zoom);
+        QTRY_VERIFY(zoom->isEnabled());
+
+        editor.setProjectValue(QStringLiteral("screen.zoom"), 2.0);
+        QTRY_COMPARE(editor.projectMap().value(QStringLiteral("screen")).toMap()
+                         .value(QStringLiteral("zoom")).toDouble(), 2.0);
+        editor.undo();
+        QTRY_VERIFY(!editor.projectMap().contains(QStringLiteral("screen")));
+
+        // Reset both framing values in one edit, which one undo brings back.
+        editor.setProjectValue(QStringLiteral("screen.zoom"), 2.0);
+        editor.setProjectValue(QStringLiteral("screen.pan.x"), 0.5);
+        auto *reset = findItem(window->contentItem(), QStringLiteral("screenFramingReset"));
+        QTRY_VERIFY(reset);
+        QVERIFY(QMetaObject::invokeMethod(reset, "clicked"));
+        QTRY_VERIFY(!editor.projectMap().contains(QStringLiteral("screen")));
+        editor.undo();
+        QTRY_COMPARE(editor.projectMap().value(QStringLiteral("screen")).toMap()
+                         .value(QStringLiteral("zoom")).toDouble(), 2.0);
+        QCOMPARE(editor.projectMap().value(QStringLiteral("screen")).toMap()
+                     .value(QStringLiteral("pan")).toMap()
+                     .value(QStringLiteral("x")).toDouble(), 0.5);
+
+        // With no background the frame settings are ignored, but the framing still applies.
+        editor.setProjectValue(QStringLiteral("background.type"), QStringLiteral("none"));
+        QTRY_VERIFY(zoom->isEnabled());
+    }
+
 private:
     bool makeVideo(const QString &path, const QString &source, double seconds)
     {

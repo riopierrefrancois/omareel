@@ -12,7 +12,7 @@ Rectangle {
     property string forcedTooltip: ""
     readonly property var sections: [
         {name:"Background", meta:"Canvas behind the video", icon:"palette.svg"},
-        {name:"Shape", meta:"Frame, shadow, and border", icon:"square.svg"},
+        {name:"Shape", meta:"Framing, frame, shadow, and border", icon:"square.svg"},
         {name:"Cursor", meta:"Pointer, clicks, and motion", icon:"mouse-pointer-2.svg"},
         {name:"Zoom", meta:"Focus and camera motion", icon:"zoom-in.svg"},
         {name:"Clip", meta:"Trim and speed", icon:"film.svg"},
