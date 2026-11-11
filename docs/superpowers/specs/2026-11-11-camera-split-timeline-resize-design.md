@@ -41,10 +41,10 @@ Written to JSON only when they differ from the "missing" value (`layout` when no
 keeps every saved project from before this change byte-identical on load+save.
 
 **Active layout** (what is drawn), one function in Rust:
-`active_camera_layout(project, camera_available)`:
+`active_camera_layout(project, camera_available, canvas_aspect)`:
 - camera disabled or no camera file → `"bubble"`
 - `layout == "split"` → `"split"`
-- `layout == "auto"` and aspect is `9:16`, `4:5` or `3:4` → `"split"`
+- `layout == "auto"` and the canvas is taller than wide (width / height < 1, including an "auto" aspect on a portrait recording) → `"split"`
 - otherwise `"bubble"`
 
 Editor rules (from the old branch, in `Document::set_project_value` and `load_preset`):
@@ -66,8 +66,7 @@ bubble }`). With Split active:
 
 ### One geometry
 
-New Rust module `crates/omareel_core/src/split_layout.rs`: `is_portrait_aspect`,
-`active_camera_layout`, `split_geometry(output_w, output_h, ratio) -> SplitGeometry {
+New Rust module `crates/omareel_core/src/split_layout.rs`: `active_camera_layout`, `split_geometry(output_w, output_h, ratio) -> SplitGeometry {
 side_by_side, screen_region, camera_rect }` (output pixels, region starts at the origin,
 `round()` like the old C++), and `split_camera_decode_scale`.
 
@@ -111,8 +110,7 @@ QML only: `src/ui/qml/Main.qml`, `src/ui/qml/Timeline.qml`.
 - Local package: `pkg/PKGBUILD` with `pkgver=0.5.0.pf1` so pacman sees it as newer than the stock
   `0.5.0-1` and older than any upstream `0.5.1`.
 
-## Open question for PF (not blocking)
+## Decided by PF (2026-11-11)
 
-Auto picks Split only for the 9:16, 4:5 and 3:4 aspects, as before. An `auto` aspect on a
-portrait monitor recording stays Bubble unless Split is chosen. Say if auto should also split any
-canvas taller than wide.
+Auto splits any canvas taller than wide, not only 9:16, 4:5 and 3:4, so portrait-monitor
+recordings on the "auto" aspect get Split too. Square stays Bubble.

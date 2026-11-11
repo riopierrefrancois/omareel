@@ -138,15 +138,16 @@ pub struct Rect { pub x: f64, pub y: f64, pub width: f64, pub height: f64 }
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct SplitGeometry { pub side_by_side: bool, pub screen_region: Rect, pub camera_rect: Rect }
 
-pub fn is_portrait_aspect(aspect: &str) -> bool  // "9:16" | "4:5" | "3:4"
-pub fn active_camera_layout(project: &Project, camera_available: bool) -> &'static str
+pub fn active_camera_layout(project: &Project, camera_available: bool, canvas_aspect: f64) -> &'static str  // canvas_aspect = width / height
 pub fn split_geometry(output_width: f64, output_height: f64, ratio: f64) -> SplitGeometry
 pub fn split_camera_decode_scale(geometry: &SplitGeometry, camera_display_width: f64, camera_display_height: f64) -> f64
 ```
 Behaviour:
 - `active_camera_layout`: `"bubble"` if `!project.camera.enabled || !camera_available`; `"split"`
-  if `layout == "split"`; `"split"` if `layout == "auto" && is_portrait_aspect(&project.aspect)`;
-  else `"bubble"`.
+  if `layout == "split"`; `"split"` if `layout == "auto" && canvas_aspect < 1.0` (taller than
+  wide; PF's decision 2026-11-11, replaces the old 9:16/4:5/3:4 list, so a portrait-monitor
+  recording on the "auto" aspect splits too; square stays bubble); else `"bubble"`. No
+  `is_portrait_aspect` function.
 - `split_geometry`: `ratio` clamped to 0.5–0.8; `w = max(0, output_width)`, `h = max(0, output_height)`;
   `side_by_side = w > h`. Side by side: `rw = (w * ratio).round()`, screen `(0, 0, rw, h)`,
   camera `(rw, 0, max(0, w - rw), h)`. Stacked: `rh = (h * ratio).round()`, screen `(0, 0, w, rh)`,
@@ -165,17 +166,20 @@ Tests first (`#[cfg(test)] mod tests` in the same file), values from the old
   out 1080x1920 ratio 0.5, display 1920x1080 → `960/1080`; out 1080x1920 ratio 0.5, display
   1080x1920 (a 1920x1080 camera turned 90°) → `1.0`; display 0x0 → `1.0`.
 - `active_camera_layout`: camera disabled → bubble; no camera → bubble; `split` on 16:9 → split;
-  `auto` on 9:16 / 4:5 / 3:4 → split; `auto` on 16:9, 1:1, 4:3 and `"auto"` aspect → bubble;
-  `bubble` on 9:16 → bubble.
+  `auto` with canvas_aspect 9/16, 4/5, 3/4 and 0.99 → split; `auto` with 16/9, 1.0, 4/3 → bubble;
+  `bubble` with 9/16 → bubble.
 - Verify: `V-CORE`.
 
 ### 2.2 `Document::active_camera_layout`
 File `crates/omareel_core/src/editor/composition.rs` (inside `impl Document`).
-- Add `pub fn active_camera_layout(&self) -> &'static str { split_layout::active_camera_layout(&self.project, self.has_camera()) }`.
+- Add `pub fn active_camera_layout(&self) -> &'static str { split_layout::active_camera_layout(&self.project, self.has_camera(), aspect_ratio(&self.project, self.recording.source_width, self.recording.source_height)) }`
+  (`aspect_ratio` is `editor/bundle.rs`; document.rs line ~442 calls it the same way).
 - Test first in `crates/omareel_core/src/editor/tests.rs`, next to
   `clip_layouts_are_undoable_and_survive_splits`, using `world.camera_bundle(...)`:
   new project → `project().camera.layout == "auto"`; set `camera.enabled` true; aspect 16:9 →
-  `"bubble"`; set `aspect` `"9:16"` → `"split"`.
+  `"bubble"`; set `aspect` `"9:16"` → `"split"`; set `aspect` `"auto"` on a recording taller than
+  wide (build the bundle with portrait source dimensions if the test world allows it; if not,
+  skip this case and say so in the commit) → `"split"`.
 - Verify: `V-CORE`.
 
 ### 2.3 Reset to auto on aspect / camera change
@@ -237,7 +241,7 @@ File `crates/omareel_core/src/export/composition.rs`.
 - `Layout`: add the same two fields. `CompositionState::initial`: `split_active: false`,
   `split: SplitGeometry::default()`.
 - `export_frame`: after `self.layout = Layout { .. }`, set `split_active` from
-  `split_layout::active_camera_layout(project, sources.camera_width > 0) == "split"` and `split` from
+  `split_layout::active_camera_layout(project, sources.camera_width > 0, self.output_width as f64 / cpp::max(1.0, self.output_height as f64)) == "split"` and `split` from
   `split_geometry(self.output_width as f64, self.output_height as f64, project.camera.split_ratio)`
   or `no_split(...)`. (`state.output_width` is set in `export/mod.rs` line ~381 before frames run;
   check that, and stop if it is not.)
@@ -249,7 +253,7 @@ File `crates/omareel_core/src/export/composition.rs`.
 ### 3.3 Export decodes the camera big enough for the band
 File `crates/omareel_core/src/export/mod.rs`, the `camera_decode_scale` block (~line 360).
 - Inside the `cpp::max(...)` add a third term: when
-  `split_layout::active_camera_layout(&project, camera_media.width > 0) == "split"`,
+  `split_layout::active_camera_layout(&project, camera_media.width > 0, f64::from(width) / cpp::max(1.0, f64::from(height))) == "split"`,
   `split_layout::split_camera_decode_scale(&split_geometry(f64::from(width), f64::from(height), project.camera.split_ratio), camera_display_width, camera_display_height)`,
   else `0.0`. Use nested `cpp::max` like the existing code.
 - Verify: `V-CORE`.
@@ -454,7 +458,7 @@ height). Verify: `V-BUILD`.
 ## Phase 7 — Docs and local package
 
 7.1 `docs/USAGE.md`: in the camera section add a short paragraph on Layout (Split / Bubble,
-auto on 9:16, 4:5, 3:4), the Screen / camera ratios, and that the timeline's top edge drags to
+auto on any canvas taller than wide), the Screen / camera ratios, and that the timeline's top edge drags to
 resize (double-click resets). `README.md` feature list: one line "Split layout for vertical
 video". Verify: read back.
 7.2 `pkg/PKGBUILD`: `pkgver=0.5.0.pf1`, `pkgrel=1`. Check `vercmp 0.5.0.pf1-1 0.5.0-1` prints `1`.
