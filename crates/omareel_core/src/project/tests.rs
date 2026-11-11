@@ -135,6 +135,24 @@ fn clip_layouts_and_full_frame_camera() {
 }
 
 #[test]
+fn camera_layout_and_split_ratio_load() {
+    assert_eq!(Project::default().camera.layout, "auto");
+    let load = |json: &str| Project::from_json(&object(json));
+    // A project saved before layouts existed, or with no camera object, keeps its bubble.
+    assert_eq!(load("{}").camera.layout, "bubble");
+    assert_eq!(load(r#"{"camera": {}}"#).camera.layout, "bubble");
+    for layout in ["auto", "bubble", "split"] {
+        let json = format!(r#"{{"camera": {{"layout": "{layout}"}}}}"#);
+        assert_eq!(load(&json).camera.layout, layout);
+    }
+    assert_eq!(load(r#"{"camera": {"layout": "sideways"}}"#).camera.layout, "bubble");
+    assert!(qcompare(load("{}").camera.split_ratio, 0.6));
+    assert!(qcompare(load(r#"{"camera": {"splitRatio": 0.7}}"#).camera.split_ratio, 0.7));
+    assert!(qcompare(load(r#"{"camera": {"splitRatio": 0.2}}"#).camera.split_ratio, 0.5));
+    assert!(qcompare(load(r#"{"camera": {"splitRatio": 0.95}}"#).camera.split_ratio, 0.8));
+}
+
+#[test]
 fn inserted_videos_stay_inside_the_bundle() {
     assert_eq!(sanitized_media_path("media/demo.mp4"), "media/demo.mp4");
     assert_eq!(sanitized_media_path("media/./demo.mp4"), "media/demo.mp4");

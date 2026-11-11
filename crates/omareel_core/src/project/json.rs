@@ -327,6 +327,9 @@ impl Project {
         p.audio.volume = a.value("volume").to_double(1.0);
         let camera = source.value("camera").to_object();
         p.camera.enabled = camera.value("enabled").to_bool(false);
+        let layout = camera.value("layout").to_string_or("bubble");
+        p.camera.layout = if ["auto", "bubble", "split"].contains(&layout.as_str()) { layout } else { "bubble".into() };
+        p.camera.split_ratio = cpp::clamp(camera.value("splitRatio").to_double(0.6), 0.5, 0.8);
         p.camera.position = camera.value("position").to_string_or("bottom-right");
         p.camera.size = camera.value("size").to_double(0.25);
         let camera_shape = camera.value("shape").to_string_or("round");
