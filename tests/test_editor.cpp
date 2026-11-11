@@ -2523,12 +2523,13 @@ private slots:
         auto *style = findItem(window->contentItem(), QStringLiteral("cameraBubbleStyle"));
         auto *note = findItem(window->contentItem(), QStringLiteral("cameraBubbleStyleNote"));
         QTRY_VERIFY(style);
-        QVERIFY(!style->property("enabled").toBool());
+        QVERIFY(!style->isVisible());
         QTRY_VERIFY(note);
         QVERIFY(note->isVisible());
 
         editor.setProjectValue(QStringLiteral("camera.layout"), QStringLiteral("bubble"));
-        QTRY_VERIFY(style->property("enabled").toBool());
+        QTRY_VERIFY(style->isVisible());
+        QVERIFY(style->property("enabled").toBool());
     }
 
     void noWebcamInUi()

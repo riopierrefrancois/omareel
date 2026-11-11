@@ -44,13 +44,14 @@ ColumnLayout {
             objectName: "cameraBubbleStyleNote"
             visible: editor.activeCameraLayout === "split"
             Layout.fillWidth: true
-            text: "Bubble style applies when Layout is Bubble."
+            text: "Shape, shadow and border apply to the bubble. Switch Layout to Bubble to change them."
             color: theme.textMuted
             font.pixelSize: theme.type.small
             wrapMode: Text.WordWrap
         }
         ColumnLayout {
             objectName: "cameraBubbleStyle"
+            visible: editor.activeCameraLayout === "bubble"
             Layout.fillWidth: true
             spacing: theme.space.panelGap
             enabled: editor.activeCameraLayout === "bubble"
