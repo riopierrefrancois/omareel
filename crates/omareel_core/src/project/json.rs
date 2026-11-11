@@ -479,6 +479,29 @@ impl Project {
         let a = &self.audio;
         let cam = &self.camera;
         let e = &self.export_settings;
+        let mut camera = obj([
+            ("enabled", cam.enabled.into()),
+            ("position", cam.position.as_str().into()),
+            ("size", cam.size.into()),
+            ("shape", cam.shape.as_str().into()),
+            ("radius", cam.radius.into()),
+            ("flipHorizontal", cam.flip_horizontal.into()),
+            ("rotation", cam.rotation.into()),
+            ("shadow", shadow(&cam.shadow)),
+            ("border", border(&cam.border)),
+            ("scaleDuringZoom", cam.scale_during_zoom.into()),
+            ("offset", obj([("x", cam.offset.x.into()), ("y", cam.offset.y.into())])),
+            ("fullFrame", cam.full_frame.as_str().into()),
+        ])
+        .to_object();
+        // Bubble and the default ratio are the "missing" values, so a saved project stays
+        // byte-identical unless the user chose something else.
+        if cam.layout != "bubble" {
+            camera.insert("layout", cam.layout.as_str());
+        }
+        if cam.split_ratio != 0.6 {
+            camera.insert("splitRatio", cam.split_ratio);
+        }
         Object::from_iter([
             ("version", Value::from(self.version)),
             ("defaultsVersion", self.defaults_version.into()),
@@ -517,23 +540,7 @@ impl Project {
                 ]),
             ),
             ("audio", obj([("desktop", a.desktop.into()), ("mic", a.mic.into()), ("volume", a.volume.into())])),
-            (
-                "camera",
-                obj([
-                    ("enabled", cam.enabled.into()),
-                    ("position", cam.position.as_str().into()),
-                    ("size", cam.size.into()),
-                    ("shape", cam.shape.as_str().into()),
-                    ("radius", cam.radius.into()),
-                    ("flipHorizontal", cam.flip_horizontal.into()),
-                    ("rotation", cam.rotation.into()),
-                    ("shadow", shadow(&cam.shadow)),
-                    ("border", border(&cam.border)),
-                    ("scaleDuringZoom", cam.scale_during_zoom.into()),
-                    ("offset", obj([("x", cam.offset.x.into()), ("y", cam.offset.y.into())])),
-                    ("fullFrame", cam.full_frame.as_str().into()),
-                ]),
-            ),
+            ("camera", camera.into()),
             (
                 "export",
                 obj([

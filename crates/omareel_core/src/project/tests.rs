@@ -153,6 +153,27 @@ fn camera_layout_and_split_ratio_load() {
 }
 
 #[test]
+fn camera_layout_round_trips() {
+    let mut project = Project::default();
+    project.camera.layout = "split".into();
+    project.camera.split_ratio = 0.7;
+    let json = project.to_json();
+    let written = json.value("camera").to_object();
+    assert_eq!(written.value("layout").to_string_or(""), "split");
+    assert!(qcompare(written.value("splitRatio").to_double(0.0), 0.7));
+    let loaded = Project::from_json(&json);
+    assert_eq!(loaded.camera.layout, "split");
+    assert!(qcompare(loaded.camera.split_ratio, 0.7));
+
+    // Bubble and the default ratio are the "missing" values, so they are not written.
+    project.camera.layout = "bubble".into();
+    project.camera.split_ratio = 0.6;
+    let written = project.to_json().value("camera").to_object();
+    assert!(!written.contains("layout"));
+    assert!(!written.contains("splitRatio"));
+}
+
+#[test]
 fn inserted_videos_stay_inside_the_bundle() {
     assert_eq!(sanitized_media_path("media/demo.mp4"), "media/demo.mp4");
     assert_eq!(sanitized_media_path("media/./demo.mp4"), "media/demo.mp4");
