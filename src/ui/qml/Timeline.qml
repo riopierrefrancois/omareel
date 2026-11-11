@@ -137,7 +137,7 @@ FocusScope {
         target: editor
         function onDurationChanged() { root.clearRange() }
     }
-    implicitHeight: editor.hasCamera ? 204 : 148
+    implicitHeight: rulerHeight + trackCount * minimumRowHeight + (trackCount - 1) * rowGap + bottomSpace
     property real labelWidth: 72
     readonly property real timelinePadding: 40
     property real basePixels: Math.max(1, width - labelWidth - timelinePadding)
@@ -161,7 +161,18 @@ FocusScope {
         return time + "." + ("00" + (milliseconds % 1000)).slice(-3).slice(0, precision)
     }
     readonly property int trackCount: editor.hasCamera ? 3 : 2
-    readonly property real tracksBottom: 32 + trackCount * 48 + (trackCount - 1) * 8
+    // True while the editor's resize handle is dragged, so row moves are not animated.
+    property bool resizing: false
+    readonly property real rulerHeight: 32
+    readonly property real rowGap: 8
+    readonly property real blockInset: 4
+    readonly property real bottomSpace: 12
+    readonly property real minimumRowHeight: 48
+    // The rows share the height the editor gives the timeline; implicitHeight is the smallest.
+    readonly property real rowHeight: Math.max(minimumRowHeight,
+        Math.floor((height - rulerHeight - bottomSpace - (trackCount - 1) * rowGap) / trackCount))
+    function rowY(index) { return rulerHeight + index * (rowHeight + rowGap) }
+    readonly property real tracksBottom: rulerHeight + trackCount * rowHeight + (trackCount - 1) * rowGap
 
     Rectangle { anchors.fill: parent; color: theme.surface }
     Rectangle {
@@ -186,7 +197,7 @@ FocusScope {
                 required property var modelData
                 required property int index
                 x: 10
-                y: 32 + index * 56 + (48 - height) / 2
+                y: root.rowY(index) + (root.rowHeight - height) / 2
                 spacing: 5
                 IconImage {
                     anchors.verticalCenter: parent.verticalCenter
@@ -258,7 +269,7 @@ FocusScope {
             Item {
                 id: ruler
                 width: parent.width
-                height: 32
+                height: root.rulerHeight
                 Repeater {
                     model: OmCountModel { size: flick.visibleTickCount }
                     delegate: Item {
@@ -325,17 +336,17 @@ FocusScope {
 
             Rectangle {
                 x: 0
-                y: 32
+                y: root.rowY(0)
                 width: Math.max(parent.width, editor.duration * root.pixelsPerSecond)
-                height: 48
+                height: root.rowHeight
                 radius: theme.controlRadius
                 color: Qt.alpha(theme.foreground, theme.dark ? .025 : .035)
             }
             ClipTrack {
                 x: 0
-                y: 36
+                y: root.rowY(0) + root.blockInset
                 width: parent.width
-                height: 40
+                height: root.rowHeight - 2 * root.blockInset
                 pixelsPerSecond: root.pixelsPerSecond
                 viewportX: flick.contentX
                 viewportWidth: flick.width
@@ -356,9 +367,9 @@ FocusScope {
                     && (root.resizingRange
                         || Math.abs(root.rangeHead - root.rangeAnchor) * root.pixelsPerSecond >= 2)
                 x: root.rangeStart * root.pixelsPerSecond
-                y: 32
+                y: root.rowY(0)
                 width: Math.max(0, (root.rangeEnd - root.rangeStart) * root.pixelsPerSecond)
-                height: 48
+                height: root.rowHeight
                 color: Qt.alpha(theme.accent, .30)
                 border.width: 2
                 border.color: theme.accent
@@ -405,17 +416,17 @@ FocusScope {
             }
             Rectangle {
                 x: 0
-                y: 88
+                y: root.rowY(1)
                 width: Math.max(parent.width, editor.duration * root.pixelsPerSecond)
-                height: 48
+                height: root.rowHeight
                 radius: theme.controlRadius
                 color: Qt.alpha(theme.foreground, theme.dark ? .025 : .035)
             }
             ZoomTrack {
                 x: 0
-                y: 92
+                y: root.rowY(1) + root.blockInset
                 width: parent.width
-                height: 40
+                height: root.rowHeight - 2 * root.blockInset
                 pixelsPerSecond: root.pixelsPerSecond
                 focusTarget: root
             }
@@ -423,9 +434,9 @@ FocusScope {
                 id: cameraTrack
                 visible: editor.hasCamera
                 x: 0
-                y: 144
+                y: root.rowY(2)
                 width: parent.width
-                height: 48
+                height: root.rowHeight
                 radius: theme.controlRadius
                 color: Qt.alpha(theme.foreground, theme.dark ? .025 : .035)
             }
@@ -433,16 +444,16 @@ FocusScope {
                 id: cameraBlock
                 visible: editor.hasCamera
                 x: 0
-                y: cameraHover.hovered ? 147 : 148
+                y: root.rowY(2) + root.blockInset - (cameraHover.hovered ? 1 : 0)
                 width: Math.max(20, editor.duration * root.pixelsPerSecond)
-                height: 40
+                height: root.rowHeight - 2 * root.blockInset
                 radius: theme.controlRadius
                 color: theme.fill
                 border.width: 1
                 border.color: cameraHover.hovered ? Qt.alpha(theme.accent, .8) : theme.stroke
                 clip: true
                 Behavior on y {
-                    enabled: !editor.loading
+                    enabled: !editor.loading && !root.resizing
                     NumberAnimation { duration: 120; easing.type: Easing.OutCubic }
                 }
                 Behavior on color {
