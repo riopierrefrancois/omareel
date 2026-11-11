@@ -13,11 +13,11 @@ Rectangle {
     readonly property var sections: [
         {name:"Background", meta:"Canvas behind the video", icon:"palette.svg"},
         {name:"Layout", meta:"Where the screen and camera go", icon:"layers.svg"},
-        {name:"Shape", meta:"Framing, frame, shadow, and border", icon:"square.svg"},
+        {name:"Screen", meta:"Padding, corners, shadow and border", icon:"square.svg"},
         {name:"Cursor", meta:"Pointer, clicks, and motion", icon:"mouse-pointer-2.svg"},
         {name:"Zoom", meta:"Focus and camera motion", icon:"zoom-in.svg"},
         {name:"Clip", meta:"Trim and speed", icon:"film.svg"},
-        {name:"Camera", meta:"Webcam & layout", icon:"camera.svg"},
+        {name:"Camera", meta:"Look of the camera", icon:"camera.svg"},
         {name:"Keystrokes", meta:"Shortcut overlay", icon:"keyboard.svg"},
         {name:"Audio", meta:"Tracks and volume", icon:"volume-2.svg"}
     ]
@@ -216,7 +216,7 @@ Rectangle {
                                 switch (root.sections[root.displayedSection].name) {
                                 case "Background": return backgroundPanel
                                 case "Layout": return layoutPanel
-                                case "Shape": return shapePanel
+                                case "Screen": return shapePanel
                                 case "Cursor": return cursorPanel
                                 case "Zoom": return zoomPanel
                                 case "Clip": return clipPanel

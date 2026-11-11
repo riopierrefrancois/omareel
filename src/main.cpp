@@ -121,7 +121,9 @@ static void configureDebugScreenshot(QQmlApplicationEngine &engine, QGuiApplicat
 
     static const QHash<QString, QString> panels{
         {QStringLiteral("background"), QStringLiteral("Background")},
-        {QStringLiteral("shape"), QStringLiteral("Shape")},
+        {QStringLiteral("layout"), QStringLiteral("Layout")},
+        {QStringLiteral("shape"), QStringLiteral("Screen")},
+        {QStringLiteral("screen"), QStringLiteral("Screen")},
         {QStringLiteral("cursor"), QStringLiteral("Cursor")},
         {QStringLiteral("zoom"), QStringLiteral("Zoom")},
         {QStringLiteral("clip"), QStringLiteral("Clip")},

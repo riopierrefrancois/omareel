@@ -2468,6 +2468,15 @@ private slots:
         QVERIFY(QMetaObject::invokeMethod(panel, "showSection",
             Q_ARG(QVariant, QVariant(QStringLiteral("Nope")))));
         QCOMPARE(panel->property("section").toInt(), before);
+
+        QVariant layoutIndex;
+        QVERIFY(QMetaObject::invokeMethod(panel, "sectionIndex", Q_RETURN_ARG(QVariant, layoutIndex),
+            Q_ARG(QVariant, QVariant(QStringLiteral("Layout")))));
+        QVERIFY(layoutIndex.toInt() >= 0);
+        QVERIFY(QMetaObject::invokeMethod(panel, "showSection",
+            Q_ARG(QVariant, QVariant(QStringLiteral("Layout")))));
+        QCOMPARE(panel->property("section").toInt(), layoutIndex.toInt());
+        QTRY_VERIFY(window->findChild<QQuickItem *>(QStringLiteral("layoutAspectMenu")));
     }
 
 private:
