@@ -46,9 +46,9 @@ one mode may be supplied.
   start notification says so.
 - `--no-audio` records no audio and overrides the saved preferences.
 - `--fps N` sets capture rate from 1 through 240; the default is 60.
-- `--webcam-height 720|1080` sets webcam capture resolution; the saved launcher preference
+- `--webcam-height 720|1080` sets camera capture resolution; the saved launcher preference
   defaults to 1080p.
-- `--no-selfview` records the webcam without showing the live camera self-view.
+- `--no-selfview` records the camera without showing the live camera self-view.
 - `--dir PATH` changes the bundle directory; the default is the `omareel` directory under
   the user's XDG Videos directory.
 - `--no-open` does not open the editor after the recording is finalized.
@@ -84,13 +84,13 @@ match is one Hyprland floats on its own, so the launcher's fixed width keeps it 
 centred while its height follows the self-view controls.
 
 While the microphone is on, its row shows a level meter, so a muted microphone or a stuck audio
-server shows up before recording rather than as a silent video. The microphone and webcam menus
+server shows up before recording rather than as a silent video. The microphone and camera menus
 follow devices as they are plugged in and pulled out. An unplugged device stays chosen and is
 used again once it is back; meanwhile the default microphone or the first camera stands in.
 
 ## Camera self-view
 
-Turning on the webcam in the launcher immediately opens a floating camera self-view on the
+Turning on the camera in the launcher immediately opens a floating camera self-view on the
 focused monitor. Choose S, M, or L in launcher settings and drag the bubble to place it before
 recording; its position is saved. Rotate, flip, resize, or hide it from the launcher. The same
 warm camera stays through recording, with no camera reconnect. With the exclusion plugin, the
@@ -166,49 +166,57 @@ adjust it and preview that endpoint. Seeking and Space playback stay inside the 
 stops at its end and restarts at its start. Press Delete or Backspace to cut the range and join
 the remaining footage, or Escape to clear it.
 
-## Clip layouts
+## Side panel
 
-Each clip has a layout, chosen in the Clip panel or from the menu on the clip's label:
+The editor's right rail has nine sections, top to bottom: **Background** (the canvas behind the
+video), **Layout** (where the screen and camera go), **Screen** (padding, corners, shadow and
+border), **Cursor** (pointer, clicks and motion), **Zoom** (focus and camera motion), **Clip**
+(trim, speed and what it shows), **Camera** (the camera's look), **Keystrokes** (shortcut
+overlay), and **Audio** (tracks and volume).
 
-- **Screen & camera** shows the screen with the camera bubble set up in the Camera panel.
-- **Camera** shows the webcam full screen, for a talking-head intro, outro, or aside.
-- **Screen** shows the screen without the bubble.
+## Clip Show
+
+Each clip's **Show** choice sits in the Clip panel or the menu on the clip's label:
+
+- **Both** shows the screen with the camera, as set in Layout.
+- **Camera** shows the camera full screen, for a talking-head intro, outro, or aside.
+- **Screen** shows the screen alone.
 
 To open on a talking head, move the playhead to where the screen part starts, press `S`, select
-the first clip, and choose Camera. Camera clips show webcam frames on the timeline. Moving between
-layouts animates over half a second at the start of the next clip: the bubble grows into the full
-frame, or shrinks back into its corner. The Camera panel's Full screen setting picks how camera
-clips look: **Fill frame** covers the whole canvas with the uncropped webcam, and **Square + blur**
-keeps a centred square over a blurred copy of the camera. Camera clips show the webcam even with
-the bubble switched off.
+the first clip, and choose Camera. Camera clips show camera frames on the timeline. Moving between
+choices animates over half a second at the start of the next clip: the bubble grows into the full
+frame, or shrinks back into its corner. The Camera panel's Full screen setting picks how Camera
+clips look: **Fill frame** covers the whole canvas with the uncropped camera, and **Square + blur**
+keeps a centred square over a blurred copy of the camera. Camera clips show the camera even when
+Show camera is off.
 
-## Camera layout
+## Layout
 
-The Camera panel's Layout control chooses **Split** or **Bubble**. Bubble is the corner overlay.
-Split gives the screen one part of the canvas and the camera the other: below the screen on a
-canvas taller than wide, to its right on a wide canvas. Auto picks Split for any canvas taller
-than wide (9:16, 4:5, 3:4, and portrait-monitor recordings); a square or wide canvas stays Bubble.
-Screen / camera picks the split as 50/50, 60/40 (the default), or 70/30. Changing the aspect or
-turning the camera off and on picks the layout automatically again. Bubble-only settings
-(position, size, shape, corner radius, shrink while zoomed, shadow, and border) are hidden in
-Split; Full screen, Rotation, and Mirror stay available.
+The Layout panel's **Canvas** menu sets the project's aspect. **Camera layout** chooses **Split**
+or **Bubble**. Bubble is the corner overlay. Split gives the screen one part of the canvas and the
+camera the other: below the screen on a canvas taller than wide, to its right on a wide canvas.
+Auto picks Split for any canvas taller than wide (9:16, 4:5, 3:4, and portrait-monitor
+recordings); a square or wide canvas stays Bubble. **Split** picks the ratio as 50/50, 60/40 (the
+default), or 70/30, and the line below says which side the camera takes. Changing the aspect or
+turning the camera off and on picks the layout automatically again.
 
-**Framing** in the same panel zooms the camera picture in its band from 1× (the cover crop) to
-3× and moves it horizontally and vertically; **Reset framing** returns to the cover crop. Drag
-the band to pan it, or hold Ctrl and scroll over it to zoom. The framing applies only in Split
-and eases out as a camera clip grows to the full frame.
+The **Screen** group zooms the recording frame from 1× (the fitted frame, padding and border
+included) to 4× and moves it horizontally and vertically; **Reset** returns to the fitted, centred
+frame. It applies in Bubble and Split, and with no background. Drag the screen picture to pan it,
+or hold Ctrl and scroll over it to zoom. The cursor, click effects, zooms, and the zoom-target
+picker follow the framed screen.
+
+The **Camera** group zooms the camera picture in its band from 1× (the cover crop) to 3× and moves
+it horizontally and vertically; **Reset** returns to the cover crop. In Bubble it shows the
+position pad and Size instead. Drag the band to pan it, or hold Ctrl and scroll over it to zoom.
+The camera framing applies only in Split and eases out as a Camera clip grows to the full frame.
+
+Bubble-only style (shape, shadow, border and the rest) is in the Camera panel. In Split it is
+hidden, and the Camera panel notes that it applies to the Bubble.
 
 Drag the timeline's top edge up or down to resize it; the Clip, Zoom, and Camera rows grow
 together and keep a 48 px minimum. Double-click the edge to reset the timeline to its minimum
 height.
-
-## Screen framing
-
-The Shape panel's **Screen framing** group zooms the recording frame from 1× (the fitted frame,
-padding and border included) to 4× and moves it horizontally and vertically; **Reset framing**
-returns to the fitted, centred frame. It applies in Bubble and Split, and with no background.
-Drag the screen picture to pan it, or hold Ctrl and scroll over it to zoom. The cursor, click
-effects, zooms, and the zoom-target picker follow the framed screen.
 
 ## Inserted videos
 
@@ -262,8 +270,9 @@ clip, style, cursor, and zoom edits are stored in `project.json`.
 - `OMAREEL_SCREENSHOT=/path/out.png` makes `omareel edit` capture its own window with
   `QQuickWindow::grabWindow()` three seconds after loading, save the PNG, and quit. The launcher
   supports the same capture flag.
-- `OMAREEL_SCREENSHOT_PANEL=background|shape|cursor|zoom|clip|camera|keystrokes|audio` selects an editor inspector
-  before the debug capture.
+- `OMAREEL_SCREENSHOT_PANEL=background|layout|screen|cursor|zoom|clip|camera|keystrokes|audio`
+  selects an editor inspector before the debug capture. The old `shape` name selects Screen, and
+  `camera` selects Camera.
 - `OMAREEL_SCREENSHOT_SIZE=1440x900` sets the debug-capture window dimensions.
 - `OMAREEL_SCREENSHOT_HOVER_HANDLE=clip-right|zoom-left` forces the selected block's named
   trim handle into its hovered visual; `OMAREEL_SCREENSHOT_DRAG_HANDLE` selects its dragging visual.
