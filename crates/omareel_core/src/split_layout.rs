@@ -58,11 +58,12 @@ pub fn split_geometry(output_width: f64, output_height: f64, ratio: f64) -> Spli
 
 /// A cover fill of the camera's part: the scale that makes the camera's display size at least
 /// as large as its rect on both axes.
-pub fn split_camera_decode_scale(geometry: &SplitGeometry, camera_display_width: f64, camera_display_height: f64) -> f64 {
+pub fn split_camera_decode_scale(geometry: &SplitGeometry, camera_display_width: f64, camera_display_height: f64, zoom: f64) -> f64 {
     if camera_display_width <= 0.0 || camera_display_height <= 0.0 {
         return 1.0;
     }
-    let scale = cpp::max(geometry.camera_rect.width / camera_display_width, geometry.camera_rect.height / camera_display_height);
+    let scale = cpp::max(geometry.camera_rect.width / camera_display_width, geometry.camera_rect.height / camera_display_height)
+        * cpp::max(1.0, zoom);
     cpp::clamp(scale, 0.01, 1.0)
 }
 
@@ -125,13 +126,30 @@ mod tests {
     #[test]
     fn decode_scale_covers_the_camera_band() {
         let side_by_side = split_geometry(1280.0, 720.0, 0.6);
-        assert!((split_camera_decode_scale(&side_by_side, 1920.0, 1080.0) - 720.0 / 1080.0).abs() < 1e-12);
+        assert!((split_camera_decode_scale(&side_by_side, 1920.0, 1080.0, 1.0) - 720.0 / 1080.0).abs() < 1e-12);
 
         let stacked = split_geometry(1080.0, 1920.0, 0.5);
-        assert!((split_camera_decode_scale(&stacked, 1920.0, 1080.0) - 960.0 / 1080.0).abs() < 1e-12);
+        assert!((split_camera_decode_scale(&stacked, 1920.0, 1080.0, 1.0) - 960.0 / 1080.0).abs() < 1e-12);
         // A 1920x1080 camera turned 90 degrees already fills the band.
-        assert!((split_camera_decode_scale(&stacked, 1080.0, 1920.0) - 1.0).abs() < 1e-12);
-        assert!((split_camera_decode_scale(&stacked, 0.0, 0.0) - 1.0).abs() < 1e-12);
+        assert!((split_camera_decode_scale(&stacked, 1080.0, 1920.0, 1.0) - 1.0).abs() < 1e-12);
+        assert!((split_camera_decode_scale(&stacked, 0.0, 0.0, 1.0) - 1.0).abs() < 1e-12);
+    }
+
+    #[test]
+    fn decode_scale_grows_with_the_split_zoom() {
+        let geometry = split_geometry(1280.0, 720.0, 0.6);
+        let one = split_camera_decode_scale(&geometry, 1920.0, 1080.0, 1.0);
+        assert!((one - 720.0 / 1080.0).abs() < 1e-12);
+        // Twice the needed pixels clamps at the source size.
+        assert!((split_camera_decode_scale(&geometry, 1920.0, 1080.0, 2.0) - 1.0).abs() < 1e-12);
+        assert!((split_camera_decode_scale(&geometry, 1920.0, 1080.0, 9.0) - 1.0).abs() < 1e-12);
+        // A zoom below 1 does not decode smaller than the band needs.
+        assert!((split_camera_decode_scale(&geometry, 1920.0, 1080.0, 0.5) - one).abs() < 1e-12);
+
+        // Where the zoom-1 value is small, the zoom doubles it.
+        let small = split_geometry(1920.0, 1080.0, 0.6);
+        assert!((split_camera_decode_scale(&small, 7680.0, 4320.0, 1.0) - 0.25).abs() < 1e-12);
+        assert!((split_camera_decode_scale(&small, 7680.0, 4320.0, 2.0) - 0.5).abs() < 1e-12);
     }
 
     #[test]

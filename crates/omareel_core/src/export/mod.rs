@@ -383,6 +383,7 @@ impl ExportJob {
                             ),
                             camera_display_width,
                             camera_display_height,
+                            project.camera.split_zoom,
                         )
                     } else {
                         0.0
