@@ -1594,6 +1594,26 @@ fn presets_save_load_list_and_delete() {
 }
 
 #[test]
+fn presets_keep_the_current_camera_layout() {
+    let world = World::new("editor-preset-layout");
+    let mut qt = world.open(&world.camera_bundle("preset-layout.omareel"));
+    qt.run(|d| d.set_project_value("aspect", "9:16".into(), false));
+    assert_eq!(qt.document.active_camera_layout(), "split");
+
+    // Saved while Split was active; loading after choosing Bubble keeps the choice.
+    qt.run(|d| d.save_preset("split-test"));
+    qt.run(|d| d.set_project_value("camera.layout", "bubble".into(), false));
+    qt.run(|d| d.load_preset("split-test"));
+    assert_eq!(qt.document.project().camera.layout, "bubble");
+
+    // Saved while Bubble was chosen; loading after choosing Split keeps that one.
+    qt.run(|d| d.save_preset("bubble-test"));
+    qt.run(|d| d.set_project_value("camera.layout", "split".into(), false));
+    qt.run(|d| d.load_preset("bubble-test"));
+    assert_eq!(qt.document.project().camera.layout, "split");
+}
+
+#[test]
 fn loading_an_old_preset_migrates_it() {
     let world = World::new("editor-old-preset");
     let mut qt = world.open(&world.bundle("editor.omareel"));

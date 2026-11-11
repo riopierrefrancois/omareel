@@ -82,11 +82,18 @@ impl Document {
         let mut bytes = Vec::new();
         let _ = file.read_to_end(&mut bytes);
         let (preset, _) = Project::migrate_defaults(&qjson::object_from_json(&bytes).unwrap_or_default());
+        let current_layout = self.project.camera.layout.clone();
         let mut project = self.project.to_json();
         for key in PRESET_KEYS {
             if preset.contains(key) {
                 project.insert(key, preset.value(key).clone());
             }
+        }
+        // A preset provides the look, not which layout the user is working in.
+        if preset.contains("camera") {
+            let mut camera = project.value("camera").to_object();
+            camera.insert("layout", current_layout.as_str());
+            project.insert("camera", camera);
         }
         self.snapshot("");
         self.project = Project::from_json(&project);
