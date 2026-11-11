@@ -2134,7 +2134,7 @@ private slots:
         QTRY_COMPARE(orientation->property("text").toString(), QStringLiteral("Screen left, camera right"));
     }
 
-    void cameraPanelFramingControls()
+    void layoutPanelCameraFraming()
     {
         Editor editor(cameraBundle(QStringLiteral("panel-framing.omareel")));
         QVERIFY2(editor.isValid(), qPrintable(editor.errorString()));
@@ -2153,7 +2153,7 @@ private slots:
             import Omareel
             Window {
                 width: 284; height: 900; visible: true
-                CameraPanel { anchors.fill: parent }
+                LayoutPanel { anchors.fill: parent }
             })", QUrl());
         QVERIFY2(component.isReady(), qPrintable(component.errorString()));
         std::unique_ptr<QObject> object(component.create());
@@ -2195,9 +2195,12 @@ private slots:
         QCOMPARE(camera().value(QStringLiteral("splitPan")).toMap()
                      .value(QStringLiteral("x")).toDouble(), 0.5);
 
-        // Bubble hides the framing controls.
+        // Bubble hides the framing controls and shows the placement pad.
         editor.setProjectValue(QStringLiteral("camera.layout"), QStringLiteral("bubble"));
         QTRY_VERIFY(!zoom->isVisible());
+        auto *pad = findItem(window->contentItem(), QStringLiteral("cameraPositionPad"));
+        QTRY_VERIFY(pad);
+        QTRY_VERIFY(pad->isVisible());
     }
 
     void layoutPanelScreenFraming()
