@@ -442,6 +442,61 @@ private slots:
         QVERIFY(isYellow(pixelAt(zoomLeft, 1.0, 480, y)));
     }
 
+    void screenFramingExports()
+    {
+        if (QStandardPaths::findExecutable(QStringLiteral("ffmpeg")).isEmpty()
+            || QStandardPaths::findExecutable(QStringLiteral("ffprobe")).isEmpty())
+            QSKIP("ffmpeg/ffprobe unavailable");
+        QTemporaryDir temporary;
+        QVERIFY(temporary.isValid());
+        const QString bundle = temporary.filePath(QStringLiteral("screen-framing.omareel"));
+        QVERIFY(QDir().mkpath(bundle));
+        // Red on the screen's left half, yellow on its right half.
+        QVERIFY(makeTwoColourVideo(QStringLiteral("red"), QStringLiteral("yellow"),
+                                   QDir(bundle).filePath(QStringLiteral("screen.mp4"))));
+        QFile capture(QDir(bundle).filePath(QStringLiteral("capture.json")));
+        QVERIFY(capture.open(QIODevice::WriteOnly));
+        capture.write(R"({"fps":30,"first_frame_us":1000})");
+        capture.close();
+        QFile input(QDir(bundle).filePath(QStringLiteral("input.jsonl")));
+        QVERIFY(input.open(QIODevice::WriteOnly));
+        input.close();
+
+        QJsonObject project = ProjectJson::defaults(QStringLiteral("Screen framing"), 2.0);
+        ProjectJson::set(project, {"background", "type"}, QStringLiteral("color"));
+        ProjectJson::set(project, {"background", "color"}, QStringLiteral("#00c000"));
+        ProjectJson::set(project, {"cursor", "visible"}, false);
+        const QString projectPath = QDir(bundle).filePath(QStringLiteral("project.json"));
+        QString error;
+        QVERIFY2(ProjectJson::save(project, projectPath, &error), qPrintable(error));
+
+        // At the fitted zoom the padding shows the background around both halves.
+        const QString output = temporary.filePath(QStringLiteral("fit.mp4"));
+        QVERIFY2(exportBundle(bundle, output, &error), qPrintable(error));
+        QVERIFY(isGreen(pixelAt(output, 1.0, 4, 180)));
+        QVERIFY(isRed(pixelAt(output, 1.0, 200, 180)));
+        QVERIFY(isYellow(pixelAt(output, 1.0, 440, 180)));
+
+        // Zoom 2 with the picture moved right fills the canvas with the left (red) part.
+        ProjectJson::set(project, {"screen", "zoom"}, 2.0);
+        ProjectJson::set(project, {"screen", "pan", "x"}, 1.0);
+        ProjectJson::set(project, {"screen", "pan", "y"}, 0.0);
+        QVERIFY2(ProjectJson::save(project, projectPath, &error), qPrintable(error));
+        const QString zoomRight = temporary.filePath(QStringLiteral("zoom-right.mp4"));
+        QVERIFY2(exportBundle(bundle, zoomRight, &error), qPrintable(error));
+        QVERIFY(isRed(pixelAt(zoomRight, 1.0, 100, 180)));
+        QVERIFY(isRed(pixelAt(zoomRight, 1.0, 300, 180)));
+        QVERIFY(!isGreen(pixelAt(zoomRight, 1.0, 4, 180)));
+
+        // Moving the picture left fills it with the right (yellow) part.
+        ProjectJson::set(project, {"screen", "pan", "x"}, -1.0);
+        QVERIFY2(ProjectJson::save(project, projectPath, &error), qPrintable(error));
+        const QString zoomLeft = temporary.filePath(QStringLiteral("zoom-left.mp4"));
+        QVERIFY2(exportBundle(bundle, zoomLeft, &error), qPrintable(error));
+        QVERIFY(isYellow(pixelAt(zoomLeft, 1.0, 340, 180)));
+        QVERIFY(isYellow(pixelAt(zoomLeft, 1.0, 600, 180)));
+    }
+
     void insertedClipsPlayWithTheirOwnPictureAndSound()
     {
         if (QStandardPaths::findExecutable(QStringLiteral("ffmpeg")).isEmpty()
