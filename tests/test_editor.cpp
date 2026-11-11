@@ -1714,6 +1714,51 @@ private slots:
         QTRY_COMPARE_WITH_TIMEOUT(editor.playerPositionMsForTests(), qint64(500), 2000);
     }
 
+    void cameraPanelLayoutFollowsTheAspect()
+    {
+        Editor editor(cameraBundle(QStringLiteral("panel-layout.omareel")));
+        QVERIFY2(editor.isValid(), qPrintable(editor.errorString()));
+        QVERIFY(editor.hasCamera());
+        editor.setProjectValue(QStringLiteral("aspect"), QStringLiteral("9:16"));
+        QCOMPARE(editor.activeCameraLayout(), QStringLiteral("split"));
+
+        Theme theme;
+        QQmlEngine engine;
+        engine.rootContext()->setContextProperty(QStringLiteral("editor"), &editor);
+        engine.rootContext()->setContextProperty(QStringLiteral("theme"), &theme);
+        QQmlComponent component(&engine);
+        component.setData(R"(
+            import QtQuick
+            import QtQuick.Window
+            import Omareel
+            Window {
+                width: 284; height: 900; visible: true
+                CameraPanel { anchors.fill: parent }
+            })", QUrl());
+        QVERIFY2(component.isReady(), qPrintable(component.errorString()));
+        std::unique_ptr<QObject> object(component.create());
+        auto *window = qobject_cast<QQuickWindow *>(object.get());
+        QVERIFY(window);
+        QVERIFY(QTest::qWaitForWindowExposed(window));
+
+        const auto findItem = [](QQuickItem *parent, const QString &name) {
+            std::function<QQuickItem *(QQuickItem *)> visit = [&](QQuickItem *item) -> QQuickItem * {
+                if (item->objectName() == name) return item;
+                for (QQuickItem *child : item->childItems())
+                    if (QQuickItem *match = visit(child)) return match;
+                return nullptr;
+            };
+            return visit(parent);
+        };
+        auto *group = findItem(window->contentItem(), QStringLiteral("cameraLayoutGroup"));
+        QTRY_VERIFY(group);
+        QCOMPARE(group->property("value").toString(), QStringLiteral("split"));
+
+        QVERIFY(QMetaObject::invokeMethod(group, "changed",
+            Q_ARG(QVariant, QVariant(QStringLiteral("bubble")))));
+        QTRY_COMPARE(editor.activeCameraLayout(), QStringLiteral("bubble"));
+    }
+
 private:
     bool makeVideo(const QString &path, const QString &source, double seconds)
     {
