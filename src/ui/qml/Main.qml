@@ -136,7 +136,7 @@ ApplicationWindow {
             x: 0
             y: timeline.mapToItem(editorUi, 0, 0).y - height / 2
             width: editorUi.width
-            height: 8
+            height: 12
             z: 10
             hoverEnabled: true
             preventStealing: true
@@ -160,6 +160,20 @@ ApplicationWindow {
                 height: 2
                 color: theme.accent
                 opacity: timelineResize.pressed || timelineResize.containsMouse ? 1 : 0
+                Behavior on opacity { NumberAnimation { duration: 120; easing.type: Easing.OutCubic } }
+            }
+            Rectangle {
+                objectName: "timelineResizeGrip"
+                anchors.horizontalCenter: parent.horizontalCenter
+                anchors.verticalCenter: parent.verticalCenter
+                readonly property bool active: timelineResize.pressed || timelineResize.containsMouse
+                width: active ? 48 : 36
+                height: 4
+                radius: 2
+                color: active ? theme.accent : theme.textMuted
+                opacity: active ? 1 : 0.55
+                Behavior on width { NumberAnimation { duration: 120; easing.type: Easing.OutCubic } }
+                Behavior on color { ColorAnimation { duration: 120; easing.type: Easing.OutCubic } }
                 Behavior on opacity { NumberAnimation { duration: 120; easing.type: Easing.OutCubic } }
             }
             OmLazyToolTip {

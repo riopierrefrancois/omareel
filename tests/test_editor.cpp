@@ -700,6 +700,11 @@ private slots:
         auto *handle = window->findChild<QQuickItem *>(QStringLiteral("timelineResizeHandle"));
         QTRY_VERIFY(timeline);
         QTRY_VERIFY(handle);
+        auto *grip = handle->findChild<QQuickItem *>(QStringLiteral("timelineResizeGrip"));
+        QVERIFY(grip);
+        QVERIFY(grip->isVisible());
+        QCOMPARE(grip->width(), 36.0);
+        QCOMPARE(grip->height(), 4.0);
 
         // The saved height may come from an earlier run; reset it to the minimum first.
         const auto handleCentre = [handle] {
