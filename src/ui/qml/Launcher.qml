@@ -457,7 +457,8 @@ ApplicationWindow {
                 Rectangle { Layout.fillWidth: true; Layout.leftMargin: 56; Layout.preferredHeight: 1; color: theme.separator }
                 SourceRow {
                     id: webcamRow
-                    title: "Webcam"
+                    objectName: "cameraSourceRow"
+                    title: "Camera"
                     iconFile: "video.svg"; iconOffFile: "video-off.svg"
                     device: launcher.webcamDevices.length > 0
                         ? window.deviceName(launcher.webcamDevices, launcher.webcamDevice, "Camera")
@@ -587,7 +588,7 @@ ApplicationWindow {
             }
             OmSeparator { Layout.fillWidth: true }
             OmToggle { Layout.fillWidth: true; text: "Countdown"; description: "Three seconds to get ready"; checked: launcher.countdownBeforeRecording; onToggled: launcher.countdownBeforeRecording = checked }
-            OmToggle { Layout.fillWidth: true; text: "Camera self-view"; description: "Floating preview of your webcam"; checked: launcher.selfViewEnabled; onToggled: launcher.selfViewEnabled = checked }
+            OmToggle { Layout.fillWidth: true; text: "Camera self-view"; description: "Floating preview of your camera"; checked: launcher.selfViewEnabled; onToggled: launcher.selfViewEnabled = checked }
             OmSettingRow {
                 label: "Self-view size"
                 enabled: launcher.selfViewEnabled

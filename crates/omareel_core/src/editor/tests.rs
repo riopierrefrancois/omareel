@@ -874,7 +874,7 @@ fn camera_timing_and_status() {
     let world = World::new("editor-camera-status");
     let bundle = world.camera_bundle("status.omareel");
     let qt = world.open(&bundle);
-    assert_eq!(qt.document.camera_status(), "Webcam: 320×180 @30, offset +0.00 s");
+    assert_eq!(qt.document.camera_status(), "Camera: 320×180 @30, offset +0.00 s");
     assert_eq!(qt.document.camera_sync(2.5), Some(CameraSync { target_ms: 2000, tolerance_ms: 250, covered: false }));
     assert!(qt.document.camera_thumbnail_job().unwrap().cache_directory.contains("/camera-filmstrips-v2/"));
     std::fs::write(
@@ -883,9 +883,9 @@ fn camera_timing_and_status() {
     )
     .unwrap();
     let late = world.open(&bundle);
-    assert_eq!(late.document.camera_status(), "Webcam: 320×180 @30, offset -0.50 s");
+    assert_eq!(late.document.camera_status(), "Camera: 320×180 @30, offset -0.50 s");
     let plain = world.open(&world.bundle("plain.omareel"));
-    assert_eq!(plain.document.camera_status(), "No webcam in this bundle");
+    assert_eq!(plain.document.camera_status(), "No camera in this bundle");
     assert_eq!(plain.document.camera_sync(1.0), None);
     assert!(plain.document.camera_thumbnail_job().is_none());
 }

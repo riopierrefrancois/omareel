@@ -121,9 +121,9 @@ impl Document {
 
     /// `cameraStatus`: the webcam's size, rate and offset, as the camera panel shows them.
     pub fn camera_status(&self) -> String {
-        let Some(camera) = self.recording.camera else { return "No webcam in this bundle".into() };
+        let Some(camera) = self.recording.camera else { return "No camera in this bundle".into() };
         let fps_precision = if q_fuzzy_compare(camera.fps, f64::from(q_round(camera.fps))) { 0 } else { 2 };
-        let mut text = qstring::arg("Webcam: %1×%2 @%3, offset %4%5 s", &camera.width.to_string());
+        let mut text = qstring::arg("Camera: %1×%2 @%3, offset %4%5 s", &camera.width.to_string());
         text = qstring::arg(&text, &camera.height.to_string());
         text = qstring::arg(&text, &qnumber::number_f64(camera.fps, 'f', fps_precision));
         text = qstring::arg(&text, if camera.offset >= 0.0 { "+" } else { "" });

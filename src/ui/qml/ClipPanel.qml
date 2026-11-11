@@ -47,7 +47,7 @@ ColumnLayout {
             visible: editor.hasCamera && root.selected !== null && !root.insert
             Layout.fillWidth: true
             text: !root.selected ? ""
-                : root.selected.layout === "camera" ? "The webcam fills the frame. Choose Fill or Square in Camera."
+                : root.selected.layout === "camera" ? "The camera fills the frame. Choose Fill or Square in Camera."
                 : root.selected.layout === "screen" ? "The screen alone, without the camera bubble."
                 : editor.project.camera.enabled ? "The screen with the camera bubble."
                 : "The screen alone: the camera bubble is off in Camera."

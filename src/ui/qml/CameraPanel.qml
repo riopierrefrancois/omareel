@@ -12,7 +12,7 @@ ColumnLayout {
     OmEmptyState {
         visible: !editor.hasCamera
         iconSource: "qrc:/omareel/assets/icons/lucide/video-off.svg"
-        title: "No webcam in this recording"
+        title: "No camera in this recording"
         hint: "Turn on Camera in the launcher before recording to add a camera."
     }
     Label {

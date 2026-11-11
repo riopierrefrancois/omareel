@@ -1,4 +1,5 @@
 #include "omareel_qt/src/editor.cxxqt.h"
+#include "omareel_qt/src/launcher.cxxqt.h"
 #include "ProjectJson.h"
 #include "omareel_qt/src/theme.cxxqt.h"
 #include "render/VideoDecoding.h"
@@ -2528,6 +2529,29 @@ private slots:
 
         editor.setProjectValue(QStringLiteral("camera.layout"), QStringLiteral("bubble"));
         QTRY_VERIFY(style->property("enabled").toBool());
+    }
+
+    void noWebcamInUi()
+    {
+        Launcher launcher;
+        Theme theme;
+        QQmlEngine engine;
+        engine.rootContext()->setContextProperty(QStringLiteral("launcher"), &launcher);
+        engine.rootContext()->setContextProperty(QStringLiteral("theme"), &theme);
+        QQmlComponent component(&engine);
+        component.setData(R"(
+            import QtQuick
+            import Omareel
+            Launcher { width: 380; height: 600; visible: true }
+        )", QUrl());
+        QVERIFY2(component.isReady(), qPrintable(component.errorString()));
+        std::unique_ptr<QObject> object(component.create());
+        auto *window = qobject_cast<QQuickWindow *>(object.get());
+        QVERIFY(window);
+        QVERIFY(QTest::qWaitForWindowExposed(window));
+        auto *row = window->findChild<QQuickItem *>(QStringLiteral("cameraSourceRow"));
+        QTRY_VERIFY(row);
+        QCOMPARE(row->property("title").toString(), QStringLiteral("Camera"));
     }
 
 private:
