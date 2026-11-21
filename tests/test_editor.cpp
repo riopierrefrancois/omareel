@@ -1648,10 +1648,14 @@ private slots:
         QVERIFY(editor.shareAvailable());
         QVERIFY(shareButton->isVisible());
         QVERIFY(shareButton->isEnabled());
+        bool sawSharing = false;
+        bool sawDisabledShareButton = false;
         bool sawPreparing = false;
         bool sawUploading = false;
         connect(&editor, &Editor::shareChanged, this, [&] {
             if (!editor.sharing()) return;
+            sawSharing = true;
+            sawDisabledShareButton |= !shareButton->isEnabled();
             sawPreparing |= editor.shareStage() == QStringLiteral("preparing")
                          && qAbs(editor.sharePercent() - 37.5) < .001;
             sawUploading |= editor.shareStage() == QStringLiteral("uploading")
@@ -1659,9 +1663,9 @@ private slots:
         });
         QSignalSpy shared(&editor, &Editor::shareFinished);
         QVERIFY(QMetaObject::invokeMethod(shareButton, "click"));
-        QVERIFY(editor.sharing());
-        QVERIFY(!shareButton->isEnabled());
         QTRY_COMPARE(shared.size(), 1);
+        QVERIFY(sawSharing);
+        QVERIFY(sawDisabledShareButton);
         const QString link = QStringLiteral("https://share.example.com/s/test-share");
         QCOMPARE(shared.first().first().toString(), link);
         QCOMPARE(editor.shareLink(), link);
@@ -1676,10 +1680,11 @@ private slots:
         qputenv("OMASHARE_FAKE_FAIL", "1");
         window->requestActivate();
         QTRY_VERIFY(window->isActive());
+        sawSharing = false;
         QTest::keyClick(window, Qt::Key_L, Qt::ControlModifier);
-        QVERIFY(editor.sharing());
-        QVERIFY(editor.shareLink().isEmpty());
+        QTRY_VERIFY(sawSharing);
         QTRY_VERIFY(!editor.sharing());
+        QVERIFY(editor.shareLink().isEmpty());
         QCOMPARE(shared.size(), 1);
         QCOMPARE(editor.shareError(),
                  QStringLiteral("Sign in to OmaShare first: run omashare login in a terminal."));
