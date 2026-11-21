@@ -37,13 +37,13 @@ The exit code is 0 or 1. It copies the link to the clipboard itself (via wl-copy
 ## Tasks
 
 ### R1: share in the core and on the Editor
-- [ ] `omareel_core`:
+- [x] `omareel_core`:
   - a share runner that starts `omashare --json --name <title> <path>` (separate arguments) and turns its stdout lines into events: progress (stage, percent), done (link), error (message).
   - Missing tool: "Install omashare to share links."
   - "Not signed in": "Sign in to OmaShare first: run omashare login in a terminal."
   - A non-zero exit with no message: "Couldn't share the video."
   - `cargo test` for the line parser: progress, done, error, junk lines ignored, a missing done with exit 1.
-- [ ] `Editor`:
+- [x] `Editor`:
   - qproperties `sharing` (bool), `share_stage` (QString), `share_percent` (f64), `share_link` (QString), `share_error` (QString)
   - signal `share_finished(link)`
   - invokable `share(path, title)`, which is ignored while a share runs and resets link/error on start

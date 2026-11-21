@@ -20,6 +20,7 @@ pub mod motion_track;
 pub mod omarchy_paths;
 pub mod probe;
 pub mod project;
+pub mod share;
 pub mod recording_preferences;
 pub mod split_layout;
 pub mod theme;

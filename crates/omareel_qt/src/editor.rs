@@ -26,9 +26,11 @@ use omareel_core::media_probe;
 use omareel_core::project::Project;
 use std::cell::RefCell;
 use std::collections::VecDeque;
-use std::sync::{Arc, Mutex};
+use omareel_core::share::{self, Event as ShareEvent};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{mpsc, Arc, Mutex};
 use std::thread::JoinHandle;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use crate::export::ffi::ExportOptions;
 use crate::export::{json_map, json_variant, map};
@@ -150,6 +152,11 @@ pub mod qobject {
         #[qproperty(f64, export_fps, READ = export_fps, NOTIFY = export_progress_changed)]
         #[qproperty(i32, export_eta_seconds, READ = export_eta_seconds, NOTIFY = export_progress_changed)]
         #[qproperty(QString, exported_path, READ = exported_path, NOTIFY = export_finished)]
+        #[qproperty(bool, sharing, READ = sharing, NOTIFY = share_changed)]
+        #[qproperty(QString, share_stage, READ = share_stage, NOTIFY = share_changed)]
+        #[qproperty(f64, share_percent, READ = share_percent, NOTIFY = share_changed)]
+        #[qproperty(QString, share_link, READ = share_link, NOTIFY = share_changed)]
+        #[qproperty(QString, share_error, READ = share_error, NOTIFY = share_changed)]
         // Composition.qml contract; the editor is registered as both "editor" and "comp".
         #[qproperty(i32, output_width, READ = output_width, NOTIFY = output_size_changed)]
         #[qproperty(i32, output_height, READ = output_height, NOTIFY = output_size_changed)]
@@ -214,6 +221,10 @@ pub mod qobject {
         #[qsignal]
         fn export_finished(self: Pin<&mut Editor>, path: QString);
         #[qsignal]
+        fn share_changed(self: Pin<&mut Editor>);
+        #[qsignal]
+        fn share_finished(self: Pin<&mut Editor>, link: QString);
+        #[qsignal]
         fn autosaved(self: Pin<&mut Editor>, path: QString);
         #[qsignal]
         fn error_occurred(self: Pin<&mut Editor>, message: QString);
@@ -255,6 +266,11 @@ pub mod qobject {
         fn wallpaper_groups(self: &Editor) -> QList_QVariant;
         fn gradients(self: &Editor) -> QList_QVariant;
         fn export_progress(self: &Editor) -> f64;
+        fn sharing(self: &Editor) -> bool;
+        fn share_stage(self: &Editor) -> QString;
+        fn share_percent(self: &Editor) -> f64;
+        fn share_link(self: &Editor) -> QString;
+        fn share_error(self: &Editor) -> QString;
         fn exporting(self: &Editor) -> bool;
         fn export_error(self: &Editor) -> QString;
         fn export_fps(self: &Editor) -> f64;
@@ -427,6 +443,8 @@ pub mod qobject {
         #[qinvokable]
         fn open_containing_folder(self: &Editor, path: &QString);
         #[qinvokable]
+        fn share(self: Pin<&mut Editor>, path: &QString, title: &QString);
+        #[qinvokable]
         fn copy_path(self: &Editor, path: &QString);
         #[qinvokable]
         fn refresh_omarchy_theme(self: Pin<&mut Editor>);
@@ -585,6 +603,11 @@ struct WallpaperQueue {
     state: Mutex<(VecDeque<(String, String)>, usize)>,
 }
 
+struct ShareJob {
+    cancel: Arc<AtomicBool>,
+    stopped: mpsc::Receiver<()>,
+}
+
 /// The `Editor`'s Rust side: the document and the state that follows the players.
 pub struct EditorRust {
     /// `QDir(bundlePath).absolutePath()`.
@@ -609,6 +632,12 @@ pub struct EditorRust {
     preview_stats_clock: Option<Instant>,
     camera_thumbnails: QList<QVariant>,
     export_timer: Option<Instant>,
+    share_program: String,
+    share_job: Option<ShareJob>,
+    share_stage: QString,
+    share_percent: f64,
+    share_link: QString,
+    share_error: QString,
     /// The converted `project` map and the document revision it was made at.
     project_map: RefCell<Option<(u64, QMap<QMapPair_QString_QVariant>)>>,
     workers: RefCell<Vec<JoinHandle<()>>>,
@@ -635,6 +664,12 @@ impl EditorRust {
             preview_stats_clock: None,
             camera_thumbnails: QList::default(),
             export_timer: None,
+            share_program: share::find_tool(),
+            share_job: None,
+            share_stage: QString::default(),
+            share_percent: 0.0,
+            share_link: QString::default(),
+            share_error: QString::default(),
             project_map: RefCell::new(None),
             workers: RefCell::new(Vec::new()),
             wallpaper_jobs: Arc::new(WallpaperQueue::default()),
@@ -672,6 +707,11 @@ impl Drop for EditorRust {
     /// `~Editor`: unsaved edits are written, then the workers are waited for. Nothing is
     /// emitted: the object is being destroyed. EditorBase cancels a running export after this.
     fn drop(&mut self) {
+        if let Some(job) = self.share_job.take() {
+            job.cancel.store(true, Ordering::Relaxed);
+            // Give the worker time to kill and reap the process even when the app is exiting.
+            let _ = job.stopped.recv_timeout(Duration::from_millis(250));
+        }
         if !self.trashed {
             if let Some(document) = self.document.as_mut() {
                 if document.dirty() {
@@ -1666,6 +1706,87 @@ impl qobject::Editor {
     fn open_containing_folder(&self, path: &QString) {
         if let Some(directory) = containing_folder(&path.to_string()) {
             qobject::open_folder(&qstring(&directory));
+        }
+    }
+
+    fn sharing(&self) -> bool {
+        self.share_job.is_some()
+    }
+
+    fn share_stage(&self) -> QString {
+        self.rust().share_stage.clone()
+    }
+
+    fn share_percent(&self) -> f64 {
+        self.rust().share_percent
+    }
+
+    fn share_link(&self) -> QString {
+        self.rust().share_link.clone()
+    }
+
+    fn share_error(&self) -> QString {
+        self.rust().share_error.clone()
+    }
+
+    fn share(mut self: Pin<&mut Self>, path: &QString, title: &QString) {
+        if self.sharing() {
+            return;
+        }
+        let program = self.share_program.clone();
+        let path = path.to_string();
+        let title = title.to_string();
+        let thread = self.qt_thread();
+        let cancel = Arc::new(AtomicBool::new(false));
+        let (stopped_tx, stopped) = mpsc::channel();
+        {
+            let mut rust = self.as_mut().rust_mut();
+            rust.share_job = Some(ShareJob { cancel: Arc::clone(&cancel), stopped });
+            rust.share_stage = qstring("preparing");
+            rust.share_percent = 0.0;
+            rust.share_link = QString::default();
+            rust.share_error = QString::default();
+        }
+        self.as_mut().share_changed();
+
+        // A share must stay off the GUI thread even if spawning fails.
+        let worker = std::thread::Builder::new().spawn(move || {
+            let outcome = share::run(&program, &path, &title, &cancel, |stage, percent| {
+                let _ = thread.queue(move |mut editor| {
+                    let mut rust = editor.as_mut().rust_mut();
+                    rust.share_stage = qstring(&stage);
+                    rust.share_percent = percent;
+                    editor.share_changed();
+                });
+            });
+            let _ = stopped_tx.send(());
+            if let Some(outcome) = outcome {
+                let _ = thread.queue(move |editor| editor.complete_share(outcome));
+            }
+        });
+        if worker.is_err() {
+            self.complete_share(ShareEvent::Error(share::FAILED.into()));
+        }
+    }
+
+    fn complete_share(mut self: Pin<&mut Self>, outcome: ShareEvent) {
+        let mut link = None;
+        {
+            let mut rust = self.as_mut().rust_mut();
+            rust.share_job = None;
+            match outcome {
+                ShareEvent::Done(value) => {
+                    let value = qstring(&value);
+                    rust.share_link = value.clone();
+                    link = Some(value);
+                }
+                ShareEvent::Error(message) => rust.share_error = qstring(&message),
+                ShareEvent::Progress { .. } => {}
+            }
+        }
+        self.as_mut().share_changed();
+        if let Some(link) = link {
+            self.share_finished(link);
         }
     }
 
