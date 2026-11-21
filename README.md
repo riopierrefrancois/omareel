@@ -115,6 +115,7 @@ want the bar to appear.
 | `Ctrl+Z` / `Ctrl+Shift+Z` | Undo / redo |
 | `Ctrl+S` | Save now |
 | `Ctrl+E` | Open export |
+| `Ctrl+L` | Share link after export |
 
 ## Bundle format
 

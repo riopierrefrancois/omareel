@@ -24,9 +24,9 @@ use omareel_core::editor::{
 };
 use omareel_core::media_probe;
 use omareel_core::project::Project;
+use omareel_core::share::{self, Event as ShareEvent};
 use std::cell::RefCell;
 use std::collections::VecDeque;
-use omareel_core::share::{self, Event as ShareEvent};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{mpsc, Arc, Mutex};
 use std::thread::JoinHandle;
@@ -152,6 +152,7 @@ pub mod qobject {
         #[qproperty(f64, export_fps, READ = export_fps, NOTIFY = export_progress_changed)]
         #[qproperty(i32, export_eta_seconds, READ = export_eta_seconds, NOTIFY = export_progress_changed)]
         #[qproperty(QString, exported_path, READ = exported_path, NOTIFY = export_finished)]
+        #[qproperty(bool, share_available, READ = share_available, CONSTANT)]
         #[qproperty(bool, sharing, READ = sharing, NOTIFY = share_changed)]
         #[qproperty(QString, share_stage, READ = share_stage, NOTIFY = share_changed)]
         #[qproperty(f64, share_percent, READ = share_percent, NOTIFY = share_changed)]
@@ -266,6 +267,7 @@ pub mod qobject {
         fn wallpaper_groups(self: &Editor) -> QList_QVariant;
         fn gradients(self: &Editor) -> QList_QVariant;
         fn export_progress(self: &Editor) -> f64;
+        fn share_available(self: &Editor) -> bool;
         fn sharing(self: &Editor) -> bool;
         fn share_stage(self: &Editor) -> QString;
         fn share_percent(self: &Editor) -> f64;
@@ -1707,6 +1709,10 @@ impl qobject::Editor {
         if let Some(directory) = containing_folder(&path.to_string()) {
             qobject::open_folder(&qstring(&directory));
         }
+    }
+
+    fn share_available(&self) -> bool {
+        !self.share_program.is_empty()
     }
 
     fn sharing(&self) -> bool {

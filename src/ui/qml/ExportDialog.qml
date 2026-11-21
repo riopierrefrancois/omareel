@@ -14,13 +14,16 @@ Dialog {
     modal: true
     padding: 20
     standardButtons: Dialog.NoButton
-    closePolicy: editor.exporting ? Popup.NoAutoClose : Popup.CloseOnEscape
+    closePolicy: root.busy ? Popup.NoAutoClose : Popup.CloseOnEscape
     property string format: "mp4"
     property int heightValue: 1080
     property int fpsValue: 60
     property string qualityValue: "social"
     property string outputPath: editor.defaultExportPath(format)
     property string successPath: ""
+    property bool shareRequested: false
+    readonly property bool busy: editor.exporting || editor.sharing
+    readonly property bool canShare: root.visible && root.done && editor.shareAvailable && !root.busy
     property var previewGrab: null
     property url previewUrl: ""
     readonly property var heights: format === "mp4"
@@ -74,8 +77,19 @@ Dialog {
         if (seconds < 60) return seconds + "s"
         return Math.floor(seconds / 60) + "m " + (seconds % 60) + "s"
     }
+    function shareExport() {
+        if (!canShare) return
+        shareRequested = true
+        editor.share(root.successPath, editor.bundleName)
+    }
+    Shortcut {
+        sequence: "Ctrl+L"
+        enabled: root.canShare
+        onActivated: root.shareExport()
+    }
     onOpened: {
         successPath = ""
+        shareRequested = false
         selectFormat(editor.project.export.format || "mp4")
     }
 
@@ -103,7 +117,7 @@ Dialog {
             }
             Item { Layout.fillWidth: true }
             OmIconButton {
-                enabled: !editor.exporting
+                enabled: !root.busy
                 icon.source: "qrc:/omareel/assets/icons/lucide/x.svg"
                 Accessible.name: "Close export"
                 onClicked: root.close()
@@ -210,7 +224,7 @@ Dialog {
         ColumnLayout {
             Layout.fillWidth: true
             visible: !root.done
-            enabled: !editor.exporting
+            enabled: !root.busy
             opacity: enabled ? 1 : .5
             spacing: 10
             Behavior on opacity { NumberAnimation { duration: 200 } }
@@ -281,14 +295,15 @@ Dialog {
 
         ColumnLayout {
             Layout.fillWidth: true
-            visible: editor.exporting
+            visible: root.busy
             spacing: 8
             ProgressBar {
                 id: progress
                 objectName: "exportProgressBar"
                 Layout.fillWidth: true
                 // The encoder still has to flush once every frame is rendered.
-                value: editor.exporting ? Math.min(.99, editor.exportProgress) : editor.exportProgress
+                value: editor.sharing ? editor.sharePercent / 100
+                    : editor.exporting ? Math.min(.99, editor.exportProgress) : editor.exportProgress
                 background: Rectangle { implicitHeight: 4; color: Qt.alpha(theme.foreground, .12); radius: theme.rounded ? 2 : 0 }
                 contentItem: Item {
                     implicitHeight: 4
@@ -304,13 +319,16 @@ Dialog {
                 Layout.fillWidth: true
                 Label {
                     objectName: "exportStatusLabel"
-                    text: editor.exportProgress >= 1 ? "Finishing encoding…" : "Rendering…"
+                    text: editor.sharing
+                        ? (editor.shareStage === "uploading" ? "Uploading… " : "Preparing link… ")
+                          + Math.round(editor.sharePercent) + "%"
+                        : editor.exportProgress >= 1 ? "Finishing encoding…" : "Rendering…"
                     color: theme.foreground
                     font.pixelSize: theme.type.small
                 }
                 Item { Layout.fillWidth: true }
                 Label {
-                    visible: editor.exportProgress < 1
+                    visible: editor.exporting && editor.exportProgress < 1
                     text: editor.exportFps.toFixed(0) + " fps  ·  " + root.formatEta(editor.exportEtaSeconds) + " left"
                     color: theme.textMuted
                     font.family: theme.monoFamily
@@ -336,6 +354,42 @@ Dialog {
             font.family: theme.monoFamily
             font.pixelSize: theme.type.caption
         }
+        ColumnLayout {
+            Layout.fillWidth: true
+            visible: root.done && root.shareRequested && editor.shareLink.length > 0
+            spacing: 6
+            Label {
+                text: "Link copied"
+                color: theme.accent
+                font.pixelSize: theme.type.small
+            }
+            TextEdit {
+                objectName: "shareLinkText"
+                Layout.fillWidth: true
+                text: editor.shareLink
+                textFormat: TextEdit.PlainText
+                readOnly: true
+                selectByMouse: true
+                wrapMode: TextEdit.WrapAnywhere
+                color: theme.foreground
+                font.family: theme.monoFamily
+                font.pixelSize: theme.type.caption
+            }
+            RowLayout {
+                enabled: !root.busy
+                OmButton { text: "Copy link"; onClicked: editor.copyPath(editor.shareLink) }
+                OmButton { text: "Open"; onClicked: Qt.openUrlExternally(editor.shareLink) }
+            }
+        }
+        Label {
+            objectName: "shareErrorLabel"
+            Layout.fillWidth: true
+            visible: root.done && root.shareRequested && editor.shareError.length > 0
+            text: editor.shareError
+            color: theme.record
+            wrapMode: Text.WordWrap
+            font.pixelSize: theme.type.small
+        }
         RowLayout {
             Layout.fillWidth: true
             Layout.topMargin: 2
@@ -349,12 +403,18 @@ Dialog {
             }
             OmButton {
                 visible: root.done
+                enabled: !root.busy
                 bordered: true
                 text: "Show in folder"
                 icon.source: "qrc:/omareel/assets/icons/lucide/folder-open.svg"
                 onClicked: editor.openContainingFolder(root.successPath)
             }
-            OmButton { visible: root.done; text: "Copy path"; onClicked: editor.copyPath(root.successPath) }
+            OmButton {
+                visible: root.done
+                enabled: !root.busy
+                text: "Copy path"
+                onClicked: editor.copyPath(root.successPath)
+            }
             Item { Layout.fillWidth: true }
             OmButton {
                 visible: editor.exporting
@@ -364,6 +424,7 @@ Dialog {
             }
             OmButton {
                 visible: !editor.exporting && !root.done
+                enabled: !root.busy
                 Layout.preferredWidth: 120
                 primary: true
                 text: "Export"
@@ -373,9 +434,19 @@ Dialog {
                 })
             }
             OmButton {
-                visible: root.done
+                objectName: "shareLinkButton"
+                visible: root.done && editor.shareAvailable
+                enabled: root.canShare
                 primary: true
-                Layout.preferredWidth: 88
+                text: "Share link"
+                icon.source: "qrc:/omareel/assets/icons/lucide/link.svg"
+                onClicked: root.shareExport()
+            }
+            OmButton {
+                visible: root.done
+                enabled: !root.busy
+                primary: !editor.shareAvailable
+                Layout.preferredWidth: editor.shareAvailable ? implicitWidth : 88
                 text: "Done"
                 onClicked: root.close()
             }
@@ -384,7 +455,10 @@ Dialog {
 
     Connections {
         target: editor
-        function onExportFinished(path) { root.successPath = path }
+        function onExportFinished(path) {
+            root.successPath = path
+            root.shareRequested = false
+        }
     }
     FileDialog {
         id: outputDialog

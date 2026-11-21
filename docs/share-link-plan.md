@@ -50,18 +50,18 @@ The exit code is 0 or 1. It copies the link to the clipboard itself (via wl-copy
   - Follow the existing `exporting` / `exportProgress` / `exportError` / `exportFinished` pattern.
 
 ### R2: the button in the Export window
-- [ ] In `ExportDialog.qml`'s done state (the button row with "Show in folder", "Copy path", "Done"), add **Share link** (`OmButton`, primary).
+- [x] In `ExportDialog.qml`'s done state (the button row with "Show in folder", "Copy path", "Done"), add **Share link** (`OmButton`, primary).
   - It calls `editor.share(root.successPath, editor.bundleName)`.
   - It's hidden when `omashare` isn't installed. Expose a `share_available` bool on `Editor`, checked once.
-- [ ] While sharing:
+- [x] While sharing:
   - The dialog shows "Preparing link… 40%" or "Uploading… 80%" with the dialog's existing progress bar.
   - The buttons are disabled, and the dialog can't be closed (`closePolicy` locked, as during export).
-- [ ] When done:
+- [x] When done:
   - Show the link (selectable text) under the path, with "Link copied" in the success style.
   - Add a **Copy link** button (uses the existing `copy_path` shim) and an **Open** button (opens the link in the browser).
-- [ ] On error, show the message in the dialog's error style (`theme.record`), and let them try again.
-- [ ] Add a share-link icon (Lucide `link.svg`) to `assets/icons/lucide/` and list it in `qt_add_resources` in `CMakeLists.txt`.
-- [ ] Shortcut: **Ctrl+L** in the done state shares. Add it to the README shortcut table and the `BottomBar.qml` shortcuts sheet.
+- [x] On error, show the message in the dialog's error style (`theme.record`), and let them try again.
+- [x] Add a share-link icon (Lucide `link.svg`) to `assets/icons/lucide/` and list it in `qt_add_resources` in `CMakeLists.txt`.
+- [x] Shortcut: **Ctrl+L** in the done state shares. Add it to the README shortcut table and the `BottomBar.qml` shortcuts sheet.
 
 ### R3: tests and docs
 - [ ] `tests/golden/shims/omashare`: a fake that prints two progress lines and a done line, or an error when `OMASHARE_FAKE_FAIL=1`.
