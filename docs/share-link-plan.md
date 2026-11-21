@@ -69,8 +69,8 @@ The exit code is 0 or 1. It copies the link to the clipboard itself (via wl-copy
 - [x] `docs/feature-parity.md`: Shareable links becomes **Done** (via omashare). Add one short section to `README.md` and `docs/USAGE.md`: "Share link: after an export, click Share link (or Ctrl+L) to upload it to your OmaShare and copy the link. Needs `omashare` and `omashare login` once."
 
 ### R4: release
-- [ ] `pkg/PKGBUILD`: `pkgver=0.5.0.pf9`, plus `optdepends=('omashare: Share link button')`. Commit as "Package: 0.5.0.pf9".
-- [ ] Build the package with `makepkg -f` in `pkg/` (not `./bin/install`, which installs).
+- [x] `pkg/PKGBUILD`: `pkgver=0.5.0.pf9`, plus `optdepends=('omashare: Share link button')`. Commit as "Package: 0.5.0.pf9".
+- [x] Build the package with `makepkg -f` in `pkg/` (not `./bin/install`, which installs).
 
 ## Gate
 `./bin/build && ./bin/test` green (including `cargo test`), package built. Write the report to the path the orchestrator gives: commits, test output, anything this plan got wrong. Stop.
