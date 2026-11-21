@@ -7,7 +7,7 @@ Branch `pf/share-link` (from `pf/split-and-timeline`). PF wants a **Share link**
 `omashare` (installed at `/usr/bin/omashare`, from github.com/riopierrefrancois/omashare-cli) does the upload. Omareel runs it and shows progress:
 
 ```
-omashare --json --name "TITLE" /abs/path/export.mp4
+omashare --json upload --name "TITLE" /abs/path/export.mp4
 ```
 
 stdout is one JSON object per line:
@@ -38,7 +38,7 @@ The exit code is 0 or 1. It copies the link to the clipboard itself (via wl-copy
 
 ### R1: share in the core and on the Editor
 - [x] `omareel_core`:
-  - a share runner that starts `omashare --json --name <title> <path>` (separate arguments) and turns its stdout lines into events: progress (stage, percent), done (link), error (message).
+  - a share runner that starts `omashare --json upload --name <title> <path>` (separate arguments) and turns its stdout lines into events: progress (stage, percent), done (link), error (message).
   - Missing tool: "Install omashare to share links."
   - "Not signed in": "Sign in to OmaShare first: run omashare login in a terminal."
   - A non-zero exit with no message: "Couldn't share the video."
@@ -64,9 +64,9 @@ The exit code is 0 or 1. It copies the link to the clipboard itself (via wl-copy
 - [x] Shortcut: **Ctrl+L** in the done state shares. Add it to the README shortcut table and the `BottomBar.qml` shortcuts sheet.
 
 ### R3: tests and docs
-- [ ] `tests/golden/shims/omashare`: a fake that prints two progress lines and a done line, or an error when `OMASHARE_FAKE_FAIL=1`.
+- [x] `tests/golden/shims/omashare`: a fake that prints two progress lines and a done line, or an error when `OMASHARE_FAKE_FAIL=1`.
   - `test_editor`: export → share → `share_finished` with the link (QSignalSpy), progress properties seen, error path shows the message, the button is hidden when the tool is missing.
-- [ ] `docs/feature-parity.md`: Shareable links becomes **Done** (via omashare). Add one short section to `README.md` and `docs/USAGE.md`: "Share link: after an export, click Share link (or Ctrl+L) to upload it to your OmaShare and copy the link. Needs `omashare` and `omashare login` once."
+- [x] `docs/feature-parity.md`: Shareable links becomes **Done** (via omashare). Add one short section to `README.md` and `docs/USAGE.md`: "Share link: after an export, click Share link (or Ctrl+L) to upload it to your OmaShare and copy the link. Needs `omashare` and `omashare login` once."
 
 ### R4: release
 - [ ] `pkg/PKGBUILD`: `pkgver=0.5.0.pf9`, plus `optdepends=('omashare: Share link button')`. Commit as "Package: 0.5.0.pf9".

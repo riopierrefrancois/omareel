@@ -1,0 +1,15 @@
+#!/bin/sh
+if [ "$#" -ne 5 ] || [ "$1" != "--json" ] || [ "$2" != "upload" ] ||
+   [ "$3" != "--name" ] || [ "$4" != "editor" ] || [ ! -f "$5" ]; then
+    printf '%s\n' '{"event":"error","error":"Unexpected share arguments"}'
+    exit 1
+fi
+
+if [ "${OMASHARE_FAKE_FAIL:-}" = "1" ]; then
+    printf '%s\n' '{"event":"error","error":"Not signed in. Run: omashare login"}'
+    exit 1
+fi
+
+printf '%s\n' '{"event":"progress","stage":"preparing","percent":37.5}'
+printf '%s\n' '{"event":"progress","stage":"uploading","percent":81.2}'
+printf '%s\n' '{"event":"done","id":"test-share","link":"https://share.example.com/s/test-share"}'

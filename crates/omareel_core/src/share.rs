@@ -64,7 +64,7 @@ pub fn run(
         return Some(Event::Error(MISSING.into()));
     }
     let mut process = Process::new();
-    process.start(program, &["--json", "--name", title, path]);
+    process.start(program, &["--json", "upload", "--name", title, path]);
     if process.state() != ProcessState::Running {
         return Some(Event::Error(MISSING.into()));
     }

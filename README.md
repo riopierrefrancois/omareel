@@ -102,6 +102,11 @@ bar and the self-view out of the file, wherever they sit. Pass `--no-selfview` t
 the camera bubble. Pass `--no-bar` or set `OMAREEL_NO_BAR=1` before starting if you do not
 want the bar to appear.
 
+### Share link
+
+After an export, click **Share link** or press **Ctrl+L** to upload it to your OmaShare
+and copy the link. You need `omashare` and must run `omashare login` once in a terminal.
+
 ### Editor shortcuts
 
 | Key | Action |

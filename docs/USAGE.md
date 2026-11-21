@@ -136,6 +136,11 @@ end-to-end throughput measurements.
 Prints JSON containing source duration, frame rate, dimensions, input-event counts, and the
 auto-generated zoom summary.
 
+## Share link
+
+After an export, click **Share link** or press **Ctrl+L** to upload it to your OmaShare
+and copy the link. You need `omashare` and must run `omashare login` once in a terminal.
+
 ## Editor keys
 
 | Key | Action |

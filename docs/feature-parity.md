@@ -41,7 +41,7 @@ composition supports it. “Partial” calls out a narrower implementation than 
 | Aspect-ratio presets | Done | Auto, wide, square, classic, vertical, tall, and portrait ratios are exposed by `src/ui/qml/BottomBar.qml` and persisted by `crates/omareel_core/src/project`. |
 | Export presets | Done | MP4/GIF size, frame-rate, and quality presets are exposed in `src/ui/qml/ExportDialog.qml` and encoded by `crates/omareel_core/src/export`; reusable visual presets are in `crates/omareel_core/src/editor`. |
 | GIF export | Done | Palette generation, looping, and optional optimization are implemented in `crates/omareel_core/src/export`. |
-| Shareable links | Missing | Add a user-selected upload provider, authenticated upload task, progress/cancellation, visibility controls, and returned-link copy UI. |
+| Shareable links | **Done** | Uploads exported videos via `omashare` and copies the link. |
 | Zoom editing | Done | Automatic/manual targets, levels, range editing, and spring presets are implemented in `src/ui/qml/ZoomPanel.qml`, `ZoomTrack.qml`, and `crates/omareel_core/src/editor`. |
 | Multiple resizable canvas layers | Missing | Introduce ordered layer objects with transforms and time ranges, selection/resize handles over the preview, a layers panel, and matching export composition. |
 | Trimming | Done | Clip edge handles and source-bound validation are implemented in `src/ui/qml/ClipTrack.qml` and `crates/omareel_core/src/editor`. |

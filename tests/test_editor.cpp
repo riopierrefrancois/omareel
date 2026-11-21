@@ -1586,6 +1586,18 @@ private slots:
 
     void exportThroughEditorApi()
     {
+        const QString shim = QFINDTESTDATA("golden/shims/omashare");
+        QVERIFY(QFileInfo(shim).isExecutable());
+        const QByteArray previousTool = qgetenv("OMAREEL_OMASHARE");
+        const QByteArray previousFailure = qgetenv("OMASHARE_FAKE_FAIL");
+        const auto restore = qScopeGuard([&] {
+            if (previousTool.isNull()) qunsetenv("OMAREEL_OMASHARE");
+            else qputenv("OMAREEL_OMASHARE", previousTool);
+            if (previousFailure.isNull()) qunsetenv("OMASHARE_FAKE_FAIL");
+            else qputenv("OMASHARE_FAKE_FAIL", previousFailure);
+        });
+        qputenv("OMAREEL_OMASHARE", QFile::encodeName(shim));
+        qunsetenv("OMASHARE_FAKE_FAIL");
         Editor editor(m_bundle);
         QVERIFY(editor.isValid());
         Theme theme;
@@ -1619,7 +1631,7 @@ private slots:
             if (editor.exportProgress() >= 1.0)
                 sawFinishing = status->property("text").toString() == QStringLiteral("Finishing encoding…");
         });
-        const QString output = m_temporary.filePath(QStringLiteral("editor-api.mp4"));
+        const QString output = m_temporary.filePath(QStringLiteral("editor api.mp4"));
         QSignalSpy finished(&editor, &Editor::exportFinished);
         QSignalSpy errors(&editor, &Editor::exportErrorChanged);
         editor.exportTo(output, {{QStringLiteral("fps"), 10}, {QStringLiteral("height"), 180}, {QStringLiteral("quality"), QStringLiteral("web-low")}});
@@ -1630,6 +1642,92 @@ private slots:
         QVERIFY(!prematureCompletion);
         QCOMPARE(bar->property("value").toDouble(), 1.0);
         Q_UNUSED(errors);
+
+        auto *shareButton = object->findChild<QQuickItem *>(QStringLiteral("shareLinkButton"));
+        QVERIFY(shareButton);
+        QVERIFY(editor.shareAvailable());
+        QVERIFY(shareButton->isVisible());
+        QVERIFY(shareButton->isEnabled());
+        bool sawPreparing = false;
+        bool sawUploading = false;
+        connect(&editor, &Editor::shareChanged, this, [&] {
+            if (!editor.sharing()) return;
+            sawPreparing |= editor.shareStage() == QStringLiteral("preparing")
+                         && qAbs(editor.sharePercent() - 37.5) < .001;
+            sawUploading |= editor.shareStage() == QStringLiteral("uploading")
+                         && qAbs(editor.sharePercent() - 81.2) < .001;
+        });
+        QSignalSpy shared(&editor, &Editor::shareFinished);
+        QVERIFY(QMetaObject::invokeMethod(shareButton, "click"));
+        QVERIFY(editor.sharing());
+        QVERIFY(!shareButton->isEnabled());
+        QTRY_COMPARE(shared.size(), 1);
+        const QString link = QStringLiteral("https://share.example.com/s/test-share");
+        QCOMPARE(shared.first().first().toString(), link);
+        QCOMPARE(editor.shareLink(), link);
+        auto *linkText = object->findChild<QQuickItem *>(QStringLiteral("shareLinkText"));
+        QVERIFY(linkText);
+        QVERIFY(linkText->isVisible());
+        QCOMPARE(linkText->property("text").toString(), link);
+        QVERIFY(editor.shareError().isEmpty());
+        QVERIFY(sawPreparing);
+        QVERIFY(sawUploading);
+
+        qputenv("OMASHARE_FAKE_FAIL", "1");
+        window->requestActivate();
+        QTRY_VERIFY(window->isActive());
+        QTest::keyClick(window, Qt::Key_L, Qt::ControlModifier);
+        QVERIFY(editor.sharing());
+        QVERIFY(editor.shareLink().isEmpty());
+        QTRY_VERIFY(!editor.sharing());
+        QCOMPARE(shared.size(), 1);
+        QCOMPARE(editor.shareError(),
+                 QStringLiteral("Sign in to OmaShare first: run omashare login in a terminal."));
+        auto *shareError = object->findChild<QQuickItem *>(QStringLiteral("shareErrorLabel"));
+        QVERIFY(shareError);
+        QVERIFY(shareError->isVisible());
+        QCOMPARE(shareError->property("text").toString(), editor.shareError());
+        QVERIFY(shareButton->isEnabled());
+    }
+
+    void shareButtonIsHiddenWithoutOmaShare()
+    {
+        const QByteArray previousTool = qgetenv("OMAREEL_OMASHARE");
+        const auto restore = qScopeGuard([&] {
+            if (previousTool.isNull()) qunsetenv("OMAREEL_OMASHARE");
+            else qputenv("OMAREEL_OMASHARE", previousTool);
+        });
+        qputenv("OMAREEL_OMASHARE", QFile::encodeName(m_temporary.filePath("missing-omashare")));
+        Editor editor(m_bundle);
+        QVERIFY(editor.isValid());
+        QVERIFY(!editor.shareAvailable());
+
+        Theme theme;
+        QQmlEngine engine;
+        engine.rootContext()->setContextProperty(QStringLiteral("editor"), &editor);
+        engine.rootContext()->setContextProperty(QStringLiteral("theme"), &theme);
+        QQmlComponent component(&engine);
+        component.setData(R"(
+            import QtQuick
+            import QtQuick.Controls
+            import Omareel
+            ApplicationWindow {
+                width: 800; height: 950; visible: true
+                ExportDialog { Component.onCompleted: open() }
+            })", QUrl());
+        QVERIFY2(component.isReady(), qPrintable(component.errorString()));
+        std::unique_ptr<QObject> object(component.create());
+        auto *window = qobject_cast<QQuickWindow *>(object.get());
+        QVERIFY(window);
+        QVERIFY(QTest::qWaitForWindowExposed(window));
+        auto *dialog = object->findChild<QObject *>(QStringLiteral("exportDialog"));
+        QVERIFY(dialog);
+        QTRY_VERIFY(dialog->property("opened").toBool());
+        QVERIFY(dialog->setProperty("successPath", QStringLiteral("/tmp/export.mp4")));
+        QVERIFY(dialog->property("done").toBool());
+        auto *shareButton = object->findChild<QQuickItem *>(QStringLiteral("shareLinkButton"));
+        QVERIFY(shareButton);
+        QVERIFY(!shareButton->isVisible());
     }
 
     void clipLayoutsAreUndoableAndSurviveSplits()
