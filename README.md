@@ -157,6 +157,21 @@ OMAREEL_DEBUG=1 omareel record --region
 Set the variable on the start invocation so the detached recorder inherits it. For the full CLI
 and UI debug screenshot flags, see [docs/USAGE.md](docs/USAGE.md).
 
+### Camera out of step with your voice
+
+Some cameras send each picture a moment after taking it, so your lips move after you hear
+your voice. Omareel starts those cameras earlier by their delay. The Sony ZV-E10 is known (0.28
+seconds). For another camera, record yourself clapping once, find how much later the picture
+of the clap comes than its sound, and save that in `~/.config/omareel/settings.json` under the
+camera's path, in milliseconds:
+
+```json
+"webcam": { "delaysMs": { "/dev/v4l/by-id/usb-Your_Camera-video-index0": 150 } }
+```
+
+A saved value also replaces the known one. Each recording notes the delay it used in
+`capture.json` as `camera.delayMs`.
+
 ## Development
 
 Building needs Rust (`rust` and `corrosion` on Arch) along with Qt 6 and CMake.

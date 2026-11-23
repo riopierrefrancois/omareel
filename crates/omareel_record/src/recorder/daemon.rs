@@ -35,6 +35,7 @@ use crate::evdev_listener::EvdevListener;
 use crate::screen_capture::{Rect, ScreenCapture, ScreenCaptureConfig};
 use omareel_core::compat::qcoreapplication::{application_dir_path, application_file_path, application_pid};
 use omareel_core::compat::qdir::{self, FileInfo};
+use omareel_core::camera_delay;
 use omareel_core::compat::qjson::{self, Object, Value};
 use omareel_core::compat::qprocess::{self, ChannelMode, DetachedChannels, ExitStatus, Process, ProcessState};
 use omareel_core::compat::qround::q_round;
@@ -1035,25 +1036,26 @@ pub fn daemon_main(arguments: &[String], warn: &dyn Fn(&str)) -> i32 {
                     30.0
                 };
                 let camera_state = read_state();
+                // The camera's pictures arrive late: start it earlier so it lines up with the sound.
+                let delay_ms = camera_delay::delay_ms(&options.webcam_device, &RecordingPreferences::load().webcam);
                 if camera_backend.is_empty() {
                     camera_backend = camera_state.value("camera_backend").to_string_or("ffmpeg-pipe");
                 }
-                capture.insert(
-                    "camera",
-                    camera_capture_block(
-                        &options.webcam_device,
-                        options.webcam_height,
-                        stream.value("width").to_int(0),
-                        stream.value("height").to_int(0),
-                        fps,
-                        camera_first_frame_us,
-                        &camera_backend,
-                        camera_state.value("camera_rotation").to_int(options.webcam_rotation),
-                        camera_state.value("camera_flip_horizontal").to_bool(options.webcam_flip_horizontal),
-                        &camera_state.value("camera_shape").to_string_or("round"),
-                        camera_state.value("camera_radius").to_double(16.0),
-                    ),
+                let mut camera_block = camera_capture_block(
+                    &options.webcam_device,
+                    options.webcam_height,
+                    stream.value("width").to_int(0),
+                    stream.value("height").to_int(0),
+                    fps,
+                    camera_first_frame_us - delay_ms * 1000,
+                    &camera_backend,
+                    camera_state.value("camera_rotation").to_int(options.webcam_rotation),
+                    camera_state.value("camera_flip_horizontal").to_bool(options.webcam_flip_horizontal),
+                    &camera_state.value("camera_shape").to_string_or("round"),
+                    camera_state.value("camera_radius").to_double(16.0),
                 );
+                camera_block.insert("delayMs", delay_ms);
+                capture.insert("camera", camera_block);
             } else {
                 qfile::remove(&camera_video);
                 qfile::remove(&camera_timestamp);
