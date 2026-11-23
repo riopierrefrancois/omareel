@@ -24,6 +24,7 @@ use omareel_core::editor::{
 };
 use omareel_core::media_probe;
 use omareel_core::project::Project;
+use omareel_core::omaedit;
 use omareel_core::share::{self, Event as ShareEvent};
 use std::cell::RefCell;
 use std::collections::VecDeque;
@@ -153,6 +154,7 @@ pub mod qobject {
         #[qproperty(i32, export_eta_seconds, READ = export_eta_seconds, NOTIFY = export_progress_changed)]
         #[qproperty(QString, exported_path, READ = exported_path, NOTIFY = export_finished)]
         #[qproperty(bool, share_available, READ = share_available, CONSTANT)]
+        #[qproperty(bool, omaedit_available, READ = omaedit_available, CONSTANT)]
         #[qproperty(bool, sharing, READ = sharing, NOTIFY = share_changed)]
         #[qproperty(QString, share_stage, READ = share_stage, NOTIFY = share_changed)]
         #[qproperty(f64, share_percent, READ = share_percent, NOTIFY = share_changed)]
@@ -268,6 +270,7 @@ pub mod qobject {
         fn gradients(self: &Editor) -> QList_QVariant;
         fn export_progress(self: &Editor) -> f64;
         fn share_available(self: &Editor) -> bool;
+        fn omaedit_available(self: &Editor) -> bool;
         fn sharing(self: &Editor) -> bool;
         fn share_stage(self: &Editor) -> QString;
         fn share_percent(self: &Editor) -> f64;
@@ -446,6 +449,8 @@ pub mod qobject {
         fn open_containing_folder(self: &Editor, path: &QString);
         #[qinvokable]
         fn share(self: Pin<&mut Editor>, path: &QString, title: &QString);
+        #[qinvokable]
+        fn open_in_omaedit(self: Pin<&mut Editor>) -> bool;
         #[qinvokable]
         fn copy_path(self: &Editor, path: &QString);
         #[qinvokable]
@@ -635,6 +640,8 @@ pub struct EditorRust {
     camera_thumbnails: QList<QVariant>,
     export_timer: Option<Instant>,
     share_program: String,
+    /// The `omaedit` executable, or empty when it is not installed.
+    omaedit_program: String,
     share_job: Option<ShareJob>,
     share_stage: QString,
     share_percent: f64,
@@ -667,6 +674,7 @@ impl EditorRust {
             camera_thumbnails: QList::default(),
             export_timer: None,
             share_program: share::find_tool(),
+            omaedit_program: omaedit::find_tool(),
             share_job: None,
             share_stage: QString::default(),
             share_percent: 0.0,
@@ -1713,6 +1721,29 @@ impl qobject::Editor {
 
     fn share_available(&self) -> bool {
         !self.share_program.is_empty()
+    }
+
+    fn omaedit_available(&self) -> bool {
+        !self.omaedit_program.is_empty()
+    }
+
+    /// Saves the edit, so the project Omaedit reads is current, then opens the recording in
+    /// Omaedit, detached: Omareel stays open. False when it could not save or start Omaedit.
+    fn open_in_omaedit(mut self: Pin<&mut Self>) -> bool {
+        if self.trashed || self.omaedit_program.is_empty() {
+            return false;
+        }
+        self.as_mut().pause();
+        if !self.as_mut().save_now() {
+            return false;
+        }
+        let program = self.omaedit_program.clone();
+        let bundle = self.bundle_path().to_string();
+        if omaedit::open(&program, &bundle) {
+            return true;
+        }
+        self.as_mut().error_occurred(qstring(omaedit::FAILED));
+        false
     }
 
     fn sharing(&self) -> bool {

@@ -1,0 +1,3 @@
+#!/bin/sh
+# Fake omaedit for test_editor: records its arguments, one per line, in $OMAEDIT_FAKE_LOG.
+printf '%s\n' "$@" > "${OMAEDIT_FAKE_LOG:?}"

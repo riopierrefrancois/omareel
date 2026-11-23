@@ -107,6 +107,11 @@ want the bar to appear.
 After an export, click **Share link** or press **Ctrl+L** to upload it to your OmaShare
 and copy the link. You need `omashare` and must run `omashare login` once in a terminal.
 
+### Open in Omaedit
+
+When Omaedit is installed, **Open in Omaedit** in the editor's top bar saves your edit and
+opens the recording in Omaedit, the multi-track editor. Omareel stays open.
+
 ### Editor shortcuts
 
 | Key | Action |

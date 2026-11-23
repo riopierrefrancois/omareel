@@ -161,6 +161,18 @@ Rectangle {
             Layout.rightMargin: 6
             color: theme.separator
         }
+        // Saves the edit, then opens this recording in Omaedit; Omareel stays open.
+        OmButton {
+            objectName: "openInOmaeditButton"
+            visible: editor.omaeditAvailable
+            Layout.preferredWidth: implicitWidth
+            Layout.minimumWidth: implicitWidth
+            Layout.rightMargin: 2
+            text: "Open in Omaedit"
+            icon.source: "qrc:/omareel/assets/icons/lucide/external-link.svg"
+            tooltipText: "Save and open this recording in Omaedit"
+            onClicked: { root.commitProjectName(); editor.openInOmaedit() }
+        }
         OmButton {
             id: presetButton
             Layout.preferredWidth: implicitWidth

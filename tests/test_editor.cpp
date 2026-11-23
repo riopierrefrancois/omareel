@@ -1695,6 +1695,50 @@ private slots:
         QVERIFY(shareButton->isEnabled());
     }
 
+    void openInOmaeditSavesThenOpensTheRecording()
+    {
+        const QString shim = QFINDTESTDATA("golden/shims/omaedit");
+        QVERIFY(QFileInfo(shim).isExecutable());
+        const QString log = m_temporary.filePath(QStringLiteral("omaedit-arguments"));
+        QFile::remove(log);
+        const QByteArray previousTool = qgetenv("OMAREEL_OMAEDIT");
+        const QByteArray previousLog = qgetenv("OMAEDIT_FAKE_LOG");
+        const auto restore = qScopeGuard([&] {
+            if (previousTool.isNull()) qunsetenv("OMAREEL_OMAEDIT");
+            else qputenv("OMAREEL_OMAEDIT", previousTool);
+            if (previousLog.isNull()) qunsetenv("OMAEDIT_FAKE_LOG");
+            else qputenv("OMAEDIT_FAKE_LOG", previousLog);
+        });
+        qputenv("OMAREEL_OMAEDIT", QFile::encodeName(shim));
+        qputenv("OMAEDIT_FAKE_LOG", QFile::encodeName(log));
+        Editor editor(m_bundle);
+        QVERIFY(editor.isValid());
+        QVERIFY(editor.omaeditAvailable());
+        editor.setProjectValue(QStringLiteral("frame.padding"), 0.2);
+        QVERIFY(editor.dirty());
+        QVERIFY(editor.openInOmaedit());
+        QVERIFY(!editor.dirty());
+        QTRY_VERIFY_WITH_TIMEOUT(QFileInfo(log).size() > 0, 5000);
+        QFile file(log);
+        QVERIFY(file.open(QIODevice::ReadOnly));
+        const QStringList arguments = QString::fromUtf8(file.readAll()).split(u'\n', Qt::SkipEmptyParts);
+        QCOMPARE(arguments, QStringList({QStringLiteral("open"), QDir(m_bundle).absolutePath()}));
+    }
+
+    void openInOmaeditIsHiddenWithoutOmaedit()
+    {
+        const QByteArray previousTool = qgetenv("OMAREEL_OMAEDIT");
+        const auto restore = qScopeGuard([&] {
+            if (previousTool.isNull()) qunsetenv("OMAREEL_OMAEDIT");
+            else qputenv("OMAREEL_OMAEDIT", previousTool);
+        });
+        qputenv("OMAREEL_OMAEDIT", QFile::encodeName(m_temporary.filePath("missing-omaedit")));
+        Editor editor(m_bundle);
+        QVERIFY(editor.isValid());
+        QVERIFY(!editor.omaeditAvailable());
+        QVERIFY(!editor.openInOmaedit());
+    }
+
     void shareButtonIsHiddenWithoutOmaShare()
     {
         const QByteArray previousTool = qgetenv("OMAREEL_OMASHARE");
